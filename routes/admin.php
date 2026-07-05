@@ -1,8 +1,11 @@
 <?php
 
 use BlogCms\Http\Controllers\Admin\BlogCategoryController;
+use BlogCms\Http\Controllers\Admin\BlogPostBasedOnController;
+use BlogCms\Http\Controllers\Admin\BlogPostCitationController;
 use BlogCms\Http\Controllers\Admin\BlogPostController;
 use BlogCms\Http\Controllers\Admin\BlogPostFaqController;
+use BlogCms\Http\Controllers\Admin\BlogPostTopicController;
 use BlogCms\Http\Controllers\Admin\BlogPostHookController;
 use BlogCms\Http\Controllers\Admin\BlogPostHowToStepController;
 use BlogCms\Http\Controllers\Admin\DashboardController;
@@ -22,6 +25,27 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
         Route::put('/{faq}', [BlogPostFaqController::class, 'update'])->name('update');
         Route::delete('/{faq}', [BlogPostFaqController::class, 'destroy'])->name('destroy');
         Route::post('/reorder', [BlogPostFaqController::class, 'reorder'])->name('reorder');
+    });
+    Route::prefix('posts/{post}/citations')->name('posts.citations.')->group(function () {
+        Route::get('/', [BlogPostCitationController::class, 'index'])->name('index');
+        Route::post('/', [BlogPostCitationController::class, 'store'])->name('store');
+        Route::put('/{citation}', [BlogPostCitationController::class, 'update'])->name('update');
+        Route::delete('/{citation}', [BlogPostCitationController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder', [BlogPostCitationController::class, 'reorder'])->name('reorder');
+    });
+    Route::prefix('posts/{post}/topics')->name('posts.topics.')->group(function () {
+        Route::get('/', [BlogPostTopicController::class, 'index'])->name('index');
+        Route::post('/', [BlogPostTopicController::class, 'store'])->name('store');
+        Route::put('/{topic}', [BlogPostTopicController::class, 'update'])->name('update');
+        Route::delete('/{topic}', [BlogPostTopicController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder', [BlogPostTopicController::class, 'reorder'])->name('reorder');
+    });
+    Route::prefix('posts/{post}/based-on')->name('posts.based-on.')->group(function () {
+        Route::get('/', [BlogPostBasedOnController::class, 'index'])->name('index');
+        Route::post('/', [BlogPostBasedOnController::class, 'store'])->name('store');
+        Route::put('/{basedOn}', [BlogPostBasedOnController::class, 'update'])->name('update');
+        Route::delete('/{basedOn}', [BlogPostBasedOnController::class, 'destroy'])->name('destroy');
+        Route::post('/reorder', [BlogPostBasedOnController::class, 'reorder'])->name('reorder');
     });
     Route::prefix('posts/{post}/howto-steps')->name('posts.howto-steps.')->group(function () {
         Route::get('/', [BlogPostHowToStepController::class, 'index'])->name('index');

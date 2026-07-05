@@ -127,6 +127,27 @@
                             class="px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
                         Hooks
                     </button>
+                    <button type="button" @click="activeTab = 'citations'"
+                            :class="activeTab === 'citations'
+                                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-neutral-600'"
+                            class="px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
+                        Citations
+                    </button>
+                    <button type="button" @click="activeTab = 'topics'"
+                            :class="activeTab === 'topics'
+                                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-neutral-600'"
+                            class="px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
+                        About / Topics
+                    </button>
+                    <button type="button" @click="activeTab = 'basedon'"
+                            :class="activeTab === 'basedon'
+                                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                                : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-neutral-600'"
+                            class="px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
+                        Based On
+                    </button>
                 </nav>
             </div>
 
@@ -765,6 +786,265 @@
                 </div>
             </div>
 
+            {{-- Citations Tab --}}
+            <div x-show="activeTab === 'citations'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-stone-800 dark:text-stone-200">Citations</h3>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage citations via AJAX — changes save instantly. Used for Schema.org "citation" markup.</p>
+                        </div>
+                        <button type="button" @click="addCitation()"
+                                class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add Citation
+                        </button>
+                    </div>
+
+                    {{-- Success/Error messages --}}
+                    <div x-show="citationMessage" x-transition class="mb-4 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400" x-text="citationMessage"></div>
+                    <div x-show="citationError" x-transition class="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" x-text="citationError"></div>
+
+                    {{-- Loading state --}}
+                    <div x-show="citationsLoading" class="text-center py-12">
+                        <svg class="w-8 h-8 mx-auto text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400 mt-2">Loading citations...</p>
+                    </div>
+
+                    {{-- Empty state --}}
+                    <div x-show="!citationsLoading && citations.length === 0" class="text-center py-12">
+                        <svg class="w-12 h-12 mx-auto text-stone-300 dark:text-stone-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400">No citations yet. Click "Add Citation" to get started.</p>
+                    </div>
+
+                    {{-- Citation items --}}
+                    <div x-show="!citationsLoading" class="space-y-4">
+                        <template x-for="(citation, index) in citations" :key="index">
+                            <div class="border border-warm-200 dark:border-neutral-600 rounded-lg p-4 bg-warm-50/50 dark:bg-neutral-900/50">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold" x-text="index + 1"></span>
+                                        <span x-show="citation.id" class="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>
+                                        <span x-show="!citation.id" class="text-xs text-amber-600 dark:text-amber-400 font-medium">New — unsaved</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="saveCitation(index)" :disabled="citationsSaving"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition disabled:opacity-50">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            Save
+                                        </button>
+                                        <button type="button" @click="deleteCitation(index)"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Name</label>
+                                        <input type="text" x-model="citation.name"
+                                               class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                               placeholder="e.g. USDA Soil Health Guide">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Type</label>
+                                        <input type="text" x-model="citation.type"
+                                               class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                               placeholder="WebPage">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">URL</label>
+                                    <input type="text" x-model="citation.url"
+                                           class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                           placeholder="https://...">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- About / Topics Tab --}}
+            <div x-show="activeTab === 'topics'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-stone-800 dark:text-stone-200">About / Topics</h3>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage topics via AJAX — changes save instantly. Used for Schema.org "about" markup.</p>
+                        </div>
+                        <button type="button" @click="addTopic()"
+                                class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add Topic
+                        </button>
+                    </div>
+
+                    {{-- Success/Error messages --}}
+                    <div x-show="topicMessage" x-transition class="mb-4 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400" x-text="topicMessage"></div>
+                    <div x-show="topicError" x-transition class="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" x-text="topicError"></div>
+
+                    {{-- Loading state --}}
+                    <div x-show="topicsLoading" class="text-center py-12">
+                        <svg class="w-8 h-8 mx-auto text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400 mt-2">Loading topics...</p>
+                    </div>
+
+                    {{-- Empty state --}}
+                    <div x-show="!topicsLoading && topics.length === 0" class="text-center py-12">
+                        <svg class="w-12 h-12 mx-auto text-stone-300 dark:text-stone-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400">No topics yet. Click "Add Topic" to get started.</p>
+                    </div>
+
+                    {{-- Topic items --}}
+                    <div x-show="!topicsLoading" class="space-y-4">
+                        <template x-for="(topic, index) in topics" :key="index">
+                            <div class="border border-warm-200 dark:border-neutral-600 rounded-lg p-4 bg-warm-50/50 dark:bg-neutral-900/50">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold" x-text="index + 1"></span>
+                                        <span x-show="topic.id" class="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>
+                                        <span x-show="!topic.id" class="text-xs text-amber-600 dark:text-amber-400 font-medium">New — unsaved</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="saveTopic(index)" :disabled="topicsSaving"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition disabled:opacity-50">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            Save
+                                        </button>
+                                        <button type="button" @click="deleteTopic(index)"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Name</label>
+                                        <input type="text" x-model="topic.name"
+                                               class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                               placeholder="e.g. Soil Reclamation">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Type</label>
+                                        <input type="text" x-model="topic.type"
+                                               class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                               placeholder="Thing">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Same As (URL)</label>
+                                    <input type="text" x-model="topic.same_as"
+                                           class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                           placeholder="https://... (optional, e.g. Wikipedia/Wikidata link)">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Based On / Sources Tab --}}
+            <div x-show="activeTab === 'basedon'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-semibold text-stone-800 dark:text-stone-200">Based On / Sources</h3>
+                            <p class="text-sm text-stone-500 dark:text-stone-400 mt-1">Manage source URLs via AJAX — changes save instantly. Used for Schema.org "isBasedOn" markup.</p>
+                        </div>
+                        <button type="button" @click="addSource()"
+                                class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Add Source
+                        </button>
+                    </div>
+
+                    {{-- Success/Error messages --}}
+                    <div x-show="basedOnMessage" x-transition class="mb-4 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-400" x-text="basedOnMessage"></div>
+                    <div x-show="basedOnError" x-transition class="mb-4 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-400" x-text="basedOnError"></div>
+
+                    {{-- Loading state --}}
+                    <div x-show="basedOnLoading" class="text-center py-12">
+                        <svg class="w-8 h-8 mx-auto text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400 mt-2">Loading sources...</p>
+                    </div>
+
+                    {{-- Empty state --}}
+                    <div x-show="!basedOnLoading && basedOn.length === 0" class="text-center py-12">
+                        <svg class="w-12 h-12 mx-auto text-stone-300 dark:text-stone-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <p class="text-stone-500 dark:text-stone-400">No sources yet. Click "Add Source" to get started.</p>
+                    </div>
+
+                    {{-- Source items --}}
+                    <div x-show="!basedOnLoading" class="space-y-4">
+                        <template x-for="(source, index) in basedOn" :key="index">
+                            <div class="border border-warm-200 dark:border-neutral-600 rounded-lg p-4 bg-warm-50/50 dark:bg-neutral-900/50">
+                                <div class="flex items-start justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold" x-text="index + 1"></span>
+                                        <span x-show="source.id" class="text-xs text-green-600 dark:text-green-400 font-medium">Saved</span>
+                                        <span x-show="!source.id" class="text-xs text-amber-600 dark:text-amber-400 font-medium">New — unsaved</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" @click="saveSource(index)" :disabled="basedOnSaving"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition disabled:opacity-50">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                            Save
+                                        </button>
+                                        <button type="button" @click="deleteSource(index)"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">URL</label>
+                                    <input type="text" x-model="source.url"
+                                           class="w-full px-4 py-2.5 bg-white dark:bg-neutral-800 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                                           placeholder="https://...">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
             {{-- Actions --}}
             <div class="mt-6 flex items-center justify-end gap-3">
                 <a href="{{ route('admin.posts.index') }}"
@@ -822,12 +1102,30 @@ document.addEventListener('alpine:init', () => {
         howtoSaving: false,
         howtoMessage: '',
         howtoError: '',
+        citations: [],
+        citationsLoading: false,
+        citationsSaving: false,
+        citationMessage: '',
+        citationError: '',
+        topics: [],
+        topicsLoading: false,
+        topicsSaving: false,
+        topicMessage: '',
+        topicError: '',
+        basedOn: [],
+        basedOnLoading: false,
+        basedOnSaving: false,
+        basedOnMessage: '',
+        basedOnError: '',
 
         init() {
             this.postId = this.$el.dataset.postId;
             this.loadFaqs();
             this.loadHooks();
             this.loadHowToSteps();
+            this.loadCitations();
+            this.loadTopics();
+            this.loadBasedOn();
         },
 
         async loadHooks() {
@@ -1093,6 +1391,222 @@ document.addEventListener('alpine:init', () => {
 
         addHowToStep() {
             this.howtoSteps.push({ id: null, title: '', content: '', image: '', tip: '', sort_order: this.howtoSteps.length });
+        },
+
+        async loadCitations() {
+            this.citationsLoading = true;
+            try {
+                const res = await fetch(`/admin/posts/${this.postId}/citations`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                this.citations = await res.json();
+            } catch (e) {
+                this.citationError = 'Failed to load citations';
+            } finally {
+                this.citationsLoading = false;
+            }
+        },
+
+        async saveCitation(index) {
+            const citation = this.citations[index];
+            if (!citation.name || !citation.url) { this.citationError = 'Name and URL are required'; return; }
+            this.citationsSaving = true;
+            this.citationMessage = '';
+            this.citationError = '';
+            try {
+                const isNew = !citation.id;
+                const url = isNew
+                    ? `/admin/posts/${this.postId}/citations`
+                    : `/admin/posts/${this.postId}/citations/${citation.id}`;
+                const res = await fetch(url, {
+                    method: isNew ? 'POST' : 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ name: citation.name, url: citation.url, type: citation.type, sort_order: index })
+                });
+                if (!res.ok) throw new Error('Failed to save');
+                const saved = await res.json();
+                this.citations[index] = saved;
+                this.citationMessage = 'Citation saved successfully';
+                setTimeout(() => this.citationMessage = '', 3000);
+            } catch (e) {
+                this.citationError = 'Failed to save citation';
+                setTimeout(() => this.citationError = '', 3000);
+            } finally {
+                this.citationsSaving = false;
+            }
+        },
+
+        async deleteCitation(index) {
+            const citation = this.citations[index];
+            if (citation.id) {
+                try {
+                    await fetch(`/admin/posts/${this.postId}/citations/${citation.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                } catch (e) {
+                    this.citationError = 'Failed to delete citation';
+                    return;
+                }
+            }
+            this.citations.splice(index, 1);
+            this.citationMessage = 'Citation deleted';
+            setTimeout(() => this.citationMessage = '', 3000);
+        },
+
+        addCitation() {
+            this.citations.push({ id: null, name: '', url: '', type: 'WebPage', sort_order: this.citations.length });
+        },
+
+        async loadTopics() {
+            this.topicsLoading = true;
+            try {
+                const res = await fetch(`/admin/posts/${this.postId}/topics`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                this.topics = await res.json();
+            } catch (e) {
+                this.topicError = 'Failed to load topics';
+            } finally {
+                this.topicsLoading = false;
+            }
+        },
+
+        async saveTopic(index) {
+            const topic = this.topics[index];
+            if (!topic.name) { this.topicError = 'Name is required'; return; }
+            this.topicsSaving = true;
+            this.topicMessage = '';
+            this.topicError = '';
+            try {
+                const isNew = !topic.id;
+                const url = isNew
+                    ? `/admin/posts/${this.postId}/topics`
+                    : `/admin/posts/${this.postId}/topics/${topic.id}`;
+                const res = await fetch(url, {
+                    method: isNew ? 'POST' : 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ name: topic.name, same_as: topic.same_as, type: topic.type, sort_order: index })
+                });
+                if (!res.ok) throw new Error('Failed to save');
+                const saved = await res.json();
+                this.topics[index] = saved;
+                this.topicMessage = 'Topic saved successfully';
+                setTimeout(() => this.topicMessage = '', 3000);
+            } catch (e) {
+                this.topicError = 'Failed to save topic';
+                setTimeout(() => this.topicError = '', 3000);
+            } finally {
+                this.topicsSaving = false;
+            }
+        },
+
+        async deleteTopic(index) {
+            const topic = this.topics[index];
+            if (topic.id) {
+                try {
+                    await fetch(`/admin/posts/${this.postId}/topics/${topic.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                } catch (e) {
+                    this.topicError = 'Failed to delete topic';
+                    return;
+                }
+            }
+            this.topics.splice(index, 1);
+            this.topicMessage = 'Topic deleted';
+            setTimeout(() => this.topicMessage = '', 3000);
+        },
+
+        addTopic() {
+            this.topics.push({ id: null, name: '', same_as: '', type: 'Thing', sort_order: this.topics.length });
+        },
+
+        async loadBasedOn() {
+            this.basedOnLoading = true;
+            try {
+                const res = await fetch(`/admin/posts/${this.postId}/based-on`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                this.basedOn = await res.json();
+            } catch (e) {
+                this.basedOnError = 'Failed to load sources';
+            } finally {
+                this.basedOnLoading = false;
+            }
+        },
+
+        async saveSource(index) {
+            const source = this.basedOn[index];
+            if (!source.url) { this.basedOnError = 'URL is required'; return; }
+            this.basedOnSaving = true;
+            this.basedOnMessage = '';
+            this.basedOnError = '';
+            try {
+                const isNew = !source.id;
+                const url = isNew
+                    ? `/admin/posts/${this.postId}/based-on`
+                    : `/admin/posts/${this.postId}/based-on/${source.id}`;
+                const res = await fetch(url, {
+                    method: isNew ? 'POST' : 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ url: source.url, sort_order: index })
+                });
+                if (!res.ok) throw new Error('Failed to save');
+                const saved = await res.json();
+                this.basedOn[index] = saved;
+                this.basedOnMessage = 'Source saved successfully';
+                setTimeout(() => this.basedOnMessage = '', 3000);
+            } catch (e) {
+                this.basedOnError = 'Failed to save source';
+                setTimeout(() => this.basedOnError = '', 3000);
+            } finally {
+                this.basedOnSaving = false;
+            }
+        },
+
+        async deleteSource(index) {
+            const source = this.basedOn[index];
+            if (source.id) {
+                try {
+                    await fetch(`/admin/posts/${this.postId}/based-on/${source.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                } catch (e) {
+                    this.basedOnError = 'Failed to delete source';
+                    return;
+                }
+            }
+            this.basedOn.splice(index, 1);
+            this.basedOnMessage = 'Source deleted';
+            setTimeout(() => this.basedOnMessage = '', 3000);
+        },
+
+        addSource() {
+            this.basedOn.push({ id: null, url: '', sort_order: this.basedOn.length });
         }
     }));
 });

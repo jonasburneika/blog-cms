@@ -33,6 +33,32 @@ class SchemaBuilder
             $articleSchema->image($coverUrl);
         }
 
+        if ($post->citations->count()) {
+            $articleSchema->citation($post->citations->map(fn ($c) => Schema::webPage()
+                ->setProperty('@type', $c->type ?: 'WebPage')
+                ->setProperty('@id', $c->url)
+                ->name($c->name)
+            )->toArray());
+        }
+
+        if ($post->topics->count()) {
+            $articleSchema->about($post->topics->map(function ($topic) {
+                $thing = Schema::thing()
+                    ->setProperty('@type', $topic->type ?: 'Thing')
+                    ->name($topic->name);
+
+                if ($topic->same_as) {
+                    $thing->sameAs($topic->same_as);
+                }
+
+                return $thing;
+            })->toArray());
+        }
+
+        if ($post->basedOn->count()) {
+            $articleSchema->isBasedOn($post->basedOn->pluck('url')->toArray());
+        }
+
         return $articleSchema;
     }
 

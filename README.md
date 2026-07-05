@@ -60,6 +60,15 @@ Everything customisable lives in `config/blog-cms.php`:
   <x-blog::schema-faq     :post="$post" />
   <x-blog::schema-howto   :post="$post" />
   ```
+  The `Article` node is automatically enriched from per-post relations (managed in the post editor and via the API):
+
+  | Relation / table | schema.org property | Rendered as |
+  |---|---|---|
+  | `citations` (`blog_post_citations`) | `citation` | `{ "@type": "WebPage", "@id": <url>, "name": <name> }[]` |
+  | `topics` (`blog_post_topics`) | `about` | `{ "@type": "Thing", "name": <name>, "sameAs": <url> }[]` |
+  | `basedOn` (`blog_post_based_on`) | `isBasedOn` | flat array of URL strings |
+
+  The API `store`/gateway accept matching `citations[]`, `topics[]`, and `based_on[]` (flat URLs) alongside `faqs`/`howto_steps`.
 - **Sitemap** — the app owns URLs, so it passes resolvers:
   ```php
   Route::get('/sitemap.xml', fn () =>

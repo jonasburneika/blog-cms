@@ -175,10 +175,22 @@ class GatewayController extends Controller
             'howto_steps.*.image' => 'nullable|string|max:500',
             'howto_steps.*.tip' => 'nullable|string',
             'howto_steps.*.sort_order' => 'nullable|integer',
+            'citations' => 'nullable|array',
+            'citations.*.name' => 'required_with:citations|string|max:255',
+            'citations.*.url' => 'required_with:citations|url|max:2048',
+            'citations.*.type' => 'nullable|string|max:100',
+            'citations.*.sort_order' => 'nullable|integer',
+            'topics' => 'nullable|array',
+            'topics.*.name' => 'required_with:topics|string|max:255',
+            'topics.*.same_as' => 'nullable|url|max:2048',
+            'topics.*.type' => 'nullable|string|max:100',
+            'topics.*.sort_order' => 'nullable|integer',
+            'based_on' => 'nullable|array',
+            'based_on.*' => 'required_with:based_on|url|max:2048',
         ]);
 
         $post = DB::transaction(function () use ($validated) {
-            $postData = collect($validated)->except(['faqs', 'howto_steps'])->toArray();
+            $postData = collect($validated)->except(['faqs', 'howto_steps', 'citations', 'topics', 'based_on'])->toArray();
             $postData['user_id'] = config('blog-cms.api.default_author_id');
 
             $post = BlogPost::create($postData);
@@ -195,10 +207,28 @@ class GatewayController extends Controller
                 }
             }
 
+            if (! empty($validated['citations'])) {
+                foreach ($validated['citations'] as $citation) {
+                    $post->citations()->create($citation);
+                }
+            }
+
+            if (! empty($validated['topics'])) {
+                foreach ($validated['topics'] as $topic) {
+                    $post->topics()->create($topic);
+                }
+            }
+
+            if (! empty($validated['based_on'])) {
+                foreach ($validated['based_on'] as $url) {
+                    $post->basedOn()->create(['url' => $url]);
+                }
+            }
+
             return $post;
         });
 
-        $post->load(['category:id,title,slug', 'faqs', 'howToSteps']);
+        $post->load(['category:id,title,slug', 'faqs', 'howToSteps', 'citations', 'topics', 'basedOn']);
 
         return response()->json([
             'data' => $post,

@@ -90,6 +90,21 @@ class BlogPost extends Model implements HasMedia
         return $this->hasMany(BlogPostHowToStep::class)->orderBy('sort_order');
     }
 
+    public function citations(): HasMany
+    {
+        return $this->hasMany(BlogPostCitation::class)->orderBy('sort_order');
+    }
+
+    public function topics(): HasMany
+    {
+        return $this->hasMany(BlogPostTopic::class)->orderBy('sort_order');
+    }
+
+    public function basedOn(): HasMany
+    {
+        return $this->hasMany(BlogPostBasedOn::class)->orderBy('sort_order');
+    }
+
     public function hooks(): HasMany
     {
         return $this->hasMany(BlogPostHook::class)->orderBy('position')->orderBy('sort_order');
