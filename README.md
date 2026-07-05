@@ -1,0 +1,85 @@
+# blog-cms
+
+A reusable, **headless-ish blog CMS core** for Laravel 12. It's a deliberately *boring* blog: models, admin management, schema.org structured data, media optimization, DB-backed translations, guest blogging, multi-author, and cache/tracking settings — and **nothing site-specific**. No frontend theme, no calculators, no custom domain models. Those live in each consuming app.
+
+Extracted so multiple sites (e.g. a brewery blog, a soil-science blog) share one maintained core and only build their own theme + domain on top.
+
+## What's in core
+
+- **Models** — `BlogPost`, `BlogCategory`, `BlogPostFaq`, `BlogPostHowToStep`, `BlogPostHook`, `HookTemplate`, `GuestBlogRequest`, `Setting`, `Translation`
+- **Admin back-office** — full CRUD for posts, categories, FAQs, how-to steps, content hooks, guest requests, translations, settings (routes under `/admin`, name prefix `admin.`)
+- **JSON API** — token-authenticated (`blog.apikey` middleware) endpoints + a single `gateway` action, for headless publishing
+- **SEO** — schema.org JSON-LD (`Article` + `FAQPage` + `HowTo`) as drop-in Blade components, `sitemap` builder, slugs
+- **Media** — Spatie MediaLibrary collections + conversions (thumb/preview)
+- **i18n** — file translations with DB overrides (admin-editable) via a custom translation loader
+- **Settings** — general, cache, and tracking (Google Search Console / GA4) settings + API-key management
+
+## What stays in the app (NOT core)
+
+- The **frontend theme** — layouts, Tailwind build, all public views, public routes/URL structure
+- **Calculators / tools** and any **custom domain** (plant DB, product data, …)
+- The **`User` model** (the app owns authentication; core treats it as the swappable author model)
+
+## Install
+
+```jsonc
+// app composer.json
+"repositories": [
+  { "type": "vcs", "url": "git@github.com:jonasburneika/blog-cms.git" }
+],
+"require": { "burneika/blog-cms": "^1.0" }
+```
+
+```bash
+composer update burneika/blog-cms
+php artisan vendor:publish --tag=blog-config   # optional: customise config
+php artisan migrate                            # core migrations auto-load
+```
+
+The service provider auto-registers (Laravel package discovery). Migrations, views (`blog::` namespace), translations (`blog::`), admin routes, and API routes are wired automatically.
+
+## Configuration & extension seams
+
+Everything customisable lives in `config/blog-cms.php`:
+
+```php
+'models' => [
+    'user'     => \App\Models\User::class,        // your auth model = the author
+    'post'     => \BlogCms\Models\BlogPost::class, // extend & rebind to add relations
+    'category' => \BlogCms\Models\BlogCategory::class,
+],
+'locales' => ['en'],
+'media'   => ['conversions' => ['thumb' => [...], 'preview' => [...]]],
+```
+
+- **Swap a model** — extend `\BlogCms\Models\BlogPost`, point the config at your subclass. Core resolves the author via `config('blog-cms.models.user')`, never a hardcoded class.
+- **Override any admin/schema view** — publish with `--tag=blog-views` and edit the copy in `resources/views/vendor/blog/…`; your copy wins.
+- **Structured data in your theme** — drop the core components into your post template:
+  ```blade
+  <x-blog::schema-article :post="$post" />
+  <x-blog::schema-faq     :post="$post" />
+  <x-blog::schema-howto   :post="$post" />
+  ```
+- **Sitemap** — the app owns URLs, so it passes resolvers:
+  ```php
+  Route::get('/sitemap.xml', fn () =>
+      \BlogCms\Support\SitemapBuilder::make(
+          postUrl: fn ($p) => url($p->category->slug.'/'.$p->slug),
+          categoryUrl: fn ($c) => url($c->slug),
+      )->toResponse(request())
+  );
+  ```
+  Then append your own app-specific URLs (calculators, etc.).
+
+## What the consuming app must still provide
+
+Core is deliberately not 100% turnkey — a few things are the app's job by design:
+
+- **Auth scaffolding** — the admin routes use the `auth` middleware, but login/registration views, the auth guard, and the `User` model live in the app. Point `config('blog-cms.models.user')` at your `User`.
+- **Admin assets** — `resources/views/vendor/blog/layouts/admin.blade.php` (once published) loads its CSS/JS via `@vite(['resources/css/app.css', 'resources/css/admin.css', 'resources/js/app.js'])` plus three CDNs (Bunny Fonts, Jodit editor, Alpine.js). The app must provide those Vite entry points (Tailwind build). Shipping a self-contained compiled admin bundle in the package is planned but not yet done — see `resources/dist/`.
+- **API author** — posts created via the token API are attributed to `config('blog-cms.api.default_author_id')` (env `BLOG_CMS_API_AUTHOR_ID`, default `1`), because the API key authenticates the request, not a person.
+- **Frontend** — the entire public theme, routes, and URL structure (the sitemap/schema helpers plug into whatever URLs you choose).
+
+## Versioning
+
+Semver. Breaking changes bump major; apps upgrade on their own schedule via the `^1.0` constraint. Fix a bug once here, tag a release, `composer update` everywhere.

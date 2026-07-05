@@ -1,0 +1,36 @@
+{
+    "name": "burneika/blog-cms",
+    "description": "Reusable, headless-ish blog CMS core for Laravel: models, admin management, schema.org structured data, media optimization, DB-backed translations, guest blogging, multi-author, cache & tracking settings. No frontend theme, no calculators.",
+    "type": "library",
+    "license": "proprietary",
+    "keywords": ["laravel", "blog", "cms", "seo", "schema.org"],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^12.0",
+        "illuminate/support": "^12.0",
+        "illuminate/database": "^12.0",
+        "illuminate/routing": "^12.0",
+        "illuminate/http": "^12.0",
+        "illuminate/translation": "^12.0",
+        "google/analytics-data": "^0.23.3",
+        "google/apiclient": "^2.19",
+        "spatie/laravel-medialibrary": "^11.21",
+        "spatie/laravel-sitemap": "^8.0",
+        "spatie/laravel-sluggable": "^3.8",
+        "spatie/schema-org": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlogCms\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "BlogCms\\BlogCmsServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
