@@ -2,9 +2,12 @@
 
 namespace BlogCms\Services;
 
+use BlogCms\Support\ImageUrlGuard;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
 use Throwable;
@@ -69,17 +72,98 @@ class ContentImageIngestor
     {
         try {
             if (Str::startsWith($src, 'data:image')) {
-                $adder = $model->addMediaFromBase64($src)->usingFileName(Str::random(16).$this->extensionFromDataUri($src));
-            } elseif (Str::startsWith($src, ['http://', 'https://'])) {
-                $adder = $model->addMediaFromUrl($src);
-            } else {
-                return null; // relative/unknown path — leave the markup untouched
+                return $this->storeBase64($model, $collection, $src);
             }
 
-            return $adder->withCustomProperties(['source_url' => $src])->toMediaCollection($collection);
-        } catch (Throwable) {
+            if (Str::startsWith($src, ['http://', 'https://'])) {
+                return $this->storeRemote($model, $collection, $src);
+            }
+
+            return null; // relative/unknown path — leave the markup untouched
+        } catch (Throwable $e) {
+            Log::warning('[blog-cms] content image ingest failed', ['url' => $src, 'error' => $e->getMessage()]);
+
             return null; // a single bad image must never break the save
         }
+    }
+
+    protected function storeBase64(HasMedia $model, string $collection, string $src): mixed
+    {
+        if (strlen($src) > (int) ($this->maxBytes() * 1.4)) {
+            Log::warning('[blog-cms] content image rejected: base64 too large');
+
+            return null;
+        }
+
+        return $model->addMediaFromBase64($src)
+            ->usingFileName(Str::random(16).$this->extensionFromDataUri($src))
+            ->withCustomProperties(['source_url' => $src])
+            ->toMediaCollection($collection);
+    }
+
+    /**
+     * Fetch a remote image behind the SSRF guard: only public hosts, no
+     * redirects (a 3xx could bounce to a blocked host), size + content-type
+     * bounded. Downloads to a temp file, then hands it to MediaLibrary.
+     */
+    protected function storeRemote(HasMedia $model, string $collection, string $src): mixed
+    {
+        if ($reason = ImageUrlGuard::blockReason($src)) {
+            Log::warning('[blog-cms] content image fetch blocked (SSRF guard)', ['url' => $src, 'reason' => $reason]);
+
+            return null;
+        }
+
+        $response = Http::withOptions(['allow_redirects' => false])
+            ->timeout((int) config('blog-cms.media.fetch_timeout', 15))
+            ->accept('image/*')
+            ->get($src);
+
+        if (! $response->ok()) { // rejects 3xx redirects and errors
+            Log::warning('[blog-cms] content image fetch rejected', ['url' => $src, 'status' => $response->status()]);
+
+            return null;
+        }
+
+        $type = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
+        $body = $response->body();
+        if (! str_starts_with($type, 'image/') || $body === '' || strlen($body) > $this->maxBytes()) {
+            Log::warning('[blog-cms] content image rejected: bad type or size', ['url' => $src, 'type' => $type]);
+
+            return null;
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'bcimg');
+        file_put_contents($tmp, $body);
+
+        try {
+            return $model->addMedia($tmp)
+                ->usingFileName(Str::random(16).$this->extensionFromMime($type))
+                ->withCustomProperties(['source_url' => $src])
+                ->toMediaCollection($collection);
+        } finally {
+            if (is_file($tmp)) {
+                @unlink($tmp); // addMedia moves it; this is a safety net
+            }
+        }
+    }
+
+    protected function maxBytes(): int
+    {
+        return (int) config('blog-cms.media.max_image_bytes', 15 * 1024 * 1024);
+    }
+
+    protected function extensionFromMime(string $mime): string
+    {
+        return match ($mime) {
+            'image/jpeg', 'image/jpg' => '.jpg',
+            'image/png' => '.png',
+            'image/gif' => '.gif',
+            'image/webp' => '.webp',
+            'image/avif' => '.avif',
+            'image/svg+xml' => '.svg',
+            default => '.img',
+        };
     }
 
     protected function applyMedia(DOMElement $img, mixed $media): void

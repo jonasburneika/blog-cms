@@ -83,6 +83,14 @@ return [
         // false to leave content images untouched.
         'ingest_content_images' => true,
         'content_collection' => 'content',
+
+        // SSRF guard for fetching remote content images. Remote hosts must
+        // resolve to public IPs; optionally restrict to an explicit allowlist
+        // (empty = any public host). Fetches disable redirects and are bounded
+        // by size + timeout.
+        'allowed_image_hosts' => [],
+        'max_image_bytes' => 15 * 1024 * 1024,
+        'fetch_timeout' => 15,
     ],
 
 ];

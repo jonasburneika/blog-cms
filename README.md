@@ -207,6 +207,12 @@ Two mechanisms:
   > up hosted in MediaLibrary automatically. Downloads are synchronous on save — queue MediaLibrary
   > conversions in the app if posts carry many images. The app must run `php artisan storage:link`.
 
+  **SSRF-guarded** (`ImageUrlGuard`): remote fetches only run for hosts that resolve to public IPs
+  (loopback, link-local `169.254.x`, and RFC1918 ranges are rejected), redirects are disabled, and
+  responses are bounded by content-type + `media.max_image_bytes`. Restrict further with
+  `media.allowed_image_hosts` (empty = any public host). Blocked/failed fetches are logged and the
+  original `src` is left in place — they never break the save.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:
