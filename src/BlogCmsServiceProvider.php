@@ -8,6 +8,7 @@ use BlogCms\Http\Middleware\HandleRedirects;
 use BlogCms\Models\BlogRedirect;
 use BlogCms\Models\BlogUrlHistory;
 use BlogCms\Observers\BlogPostTocObserver;
+use BlogCms\Observers\ContentImageObserver;
 use BlogCms\Services\UrlHistoryRecorder;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
@@ -82,6 +83,9 @@ class BlogCmsServiceProvider extends ServiceProvider
 
         // Regenerate the per-locale table of contents when content changes.
         $postClass::observe(BlogPostTocObserver::class);
+
+        // Pull inline content images into MediaLibrary after save.
+        $postClass::observe(ContentImageObserver::class);
     }
 
     protected function registerRoutes(): void

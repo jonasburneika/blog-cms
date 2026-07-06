@@ -185,6 +185,28 @@ noindex). Manage them under **Authors** in the admin.
   `blog-cms.author_url.prefix`). The app owns the actual `/author/{slug}` route/template
   (headless) and should `noindex` it unless `is_indexable`.
 
+## Media
+
+Two mechanisms:
+
+- **Structured images (MediaLibrary):** covers (`cover_desktop`/`cover_mobile`), post `gallery`,
+  category covers, and author `avatar` are Spatie MediaLibrary collections with `thumb`/`preview`
+  conversions. Read via `$post->getFirstMediaUrl('cover_desktop', 'preview')`.
+- **Inline content images (auto-ingested):** when a post is saved, `ContentImageIngestor` (via a
+  `saved` observer) pulls every `<img>` in the body into the post's **`content`** MediaLibrary
+  collection — downloading remote URLs and decoding base64 data-URIs — and rewrites each `src` to
+  the stored media URL, adding `loading="lazy"` and `width`/`height`. This runs for **every save
+  path** (token API, admin, programmatic) and **per locale**.
+
+  It's idempotent: already-local URLs are skipped, and re-sending the same source URL reuses the
+  stored file (matched by a `source_url` custom property), so repeated API updates never duplicate
+  media. The TOC/rendered HTML are refreshed from the final markup. Disable with
+  `config('blog-cms.media.ingest_content_images', false)`.
+
+  > So the API can post content HTML with plain external image URLs (or base64) and the images end
+  > up hosted in MediaLibrary automatically. Downloads are synchronous on save — queue MediaLibrary
+  > conversions in the app if posts carry many images. The app must run `php artisan storage:link`.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

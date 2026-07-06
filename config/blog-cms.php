@@ -77,6 +77,12 @@ return [
             'thumb'   => ['width' => 400, 'height' => 300],
             'preview' => ['width' => 800, 'height' => 600],
         ],
+
+        // On save, inline <img> in post content are pulled into MediaLibrary
+        // (this collection) and their src rewritten to the stored URL. Set to
+        // false to leave content images untouched.
+        'ingest_content_images' => true,
+        'content_collection' => 'content',
     ],
 
 ];

@@ -33,6 +33,15 @@ controls the language a request reads or writes:
 - Category references (`category` by slug/title) are matched in the requested locale, falling back
   to the default locale.
 
+### Inline content images (v2.0+)
+
+You can send post `content` HTML containing `<img>` tags with **plain external URLs** (or base64
+data-URIs). On save the images are downloaded into the post's MediaLibrary `content` collection and
+the `src` is rewritten to the hosted media URL (with `loading="lazy"` + `width`/`height`). Ingestion
+is idempotent — re-sending the same source URL reuses the stored file, so updating a post repeatedly
+never duplicates media. Uploading via `media/upload` first is optional; embedding a reachable URL is
+enough.
+
 ---
 
 ## Authentication

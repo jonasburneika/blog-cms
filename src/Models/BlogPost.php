@@ -140,6 +140,9 @@ class BlogPost extends Model implements HasMedia
             ->singleFile();
 
         $this->addMediaCollection('gallery');
+
+        // Inline images extracted from the post body by ContentImageIngestor.
+        $this->addMediaCollection(config('blog-cms.media.content_collection', 'content'));
     }
 
     public function registerMediaConversions(?Media $media = null): void
