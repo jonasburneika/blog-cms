@@ -80,6 +80,35 @@ Everything customisable lives in `config/blog-cms.php`:
   ```
   Then append your own app-specific URLs (calculators, etc.).
 
+## Redirects & canonicals
+
+Two SEO tools ship in the admin panel (sidebar → **Redirects**, and the *Canonical Page*
+field on the post/category SEO tab):
+
+- **Redirect Manager** (`/admin/redirects`) — point any live post or category at another
+  post or category (all four combos: category→post, post→post, post→category,
+  category→category) with a **301** (permanent) or **302** (temporary) status. Redirects are
+  served automatically by the `HandleRedirects` middleware (prepended to the `web` group), so
+  no app wiring is needed — visiting the source URL 301/302s to the target's *current* URL.
+  The target is resolved live, so a redirect keeps working even if the target is later renamed.
+  Lookup paths are kept in sync automatically when a slug or a post's category changes, and a
+  redirect is removed if either endpoint is deleted.
+
+- **Canonical page** — optionally mark another post/category as the canonical version of the
+  current page (leave as *Self* otherwise). Core stores it and exposes a resolved absolute URL;
+  the **app's theme renders the tag**:
+
+  ```blade
+  <link rel="canonical" href="{{ $post->canonical_url }}">
+  ```
+
+  `canonical_url` falls back to the page's own URL when no custom canonical is set.
+
+> URLs are resolved via `BlogCms\Support\PageUrl`, which follows the same
+> `{category}/{post}` / `{category}` structure the token API already commits to. Run
+> `php artisan migrate` after upgrading — the middleware queries the `blog_redirects` table on
+> front-end requests.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

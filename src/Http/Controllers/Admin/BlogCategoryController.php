@@ -5,6 +5,7 @@ namespace BlogCms\Http\Controllers\Admin;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Services\AnalyticsService;
+use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
 
 class BlogCategoryController extends Controller
@@ -50,11 +51,15 @@ class BlogCategoryController extends Controller
             'description' => 'nullable|string',
             'status' => 'required|string',
             'sort_order' => 'nullable|integer',
+            'canonical' => 'nullable|string',
             'cover_desktop' => 'nullable|image|max:5120',
             'cover_mobile' => 'nullable|image|max:5120',
         ]);
 
-        $category = BlogCategory::create(collect($validated)->except(['cover_desktop', 'cover_mobile'])->toArray());
+        $category = BlogCategory::create(array_merge(
+            collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray(),
+            $this->canonicalColumns($request),
+        ));
 
         if ($request->hasFile('cover_desktop')) {
             $category->addMediaFromRequest('cover_desktop')->toMediaCollection('cover_desktop');
@@ -81,11 +86,15 @@ class BlogCategoryController extends Controller
             'description' => 'nullable|string',
             'status' => 'required|string',
             'sort_order' => 'nullable|integer',
+            'canonical' => 'nullable|string',
             'cover_desktop' => 'nullable|image|max:5120',
             'cover_mobile' => 'nullable|image|max:5120',
         ]);
 
-        $category->update(collect($validated)->except(['cover_desktop', 'cover_mobile'])->toArray());
+        $category->update(array_merge(
+            collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray(),
+            $this->canonicalColumns($request),
+        ));
 
         if ($request->hasFile('cover_desktop')) {
             $category->addMediaFromRequest('cover_desktop')->toMediaCollection('cover_desktop');
@@ -104,5 +113,16 @@ class BlogCategoryController extends Controller
 
         return redirect()->route('admin.categories.index')
             ->with('success', 'Category deleted successfully.');
+    }
+
+    /** Resolve the canonical "type:id" picker value into columns (null = self). */
+    protected function canonicalColumns(Request $request): array
+    {
+        $canonical = PageUrl::parse($request->input('canonical'));
+
+        return [
+            'canonical_type' => $canonical['type'] ?? null,
+            'canonical_id' => $canonical['id'] ?? null,
+        ];
     }
 }

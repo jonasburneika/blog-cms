@@ -2,6 +2,7 @@
 
 namespace BlogCms\Models;
 
+use BlogCms\Models\Concerns\HasCanonicalPage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class BlogPost extends Model implements HasMedia
 {
-    use HasSlug, InteractsWithMedia, SoftDeletes;
+    use HasCanonicalPage, HasSlug, InteractsWithMedia, SoftDeletes;
 
     const STATUS_DRAFT = 0;
     const STATUS_PUBLISHED = 1;

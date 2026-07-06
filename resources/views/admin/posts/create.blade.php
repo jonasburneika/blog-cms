@@ -296,6 +296,15 @@
                         @enderror
                     </div>
 
+                    {{-- Canonical --}}
+                    @include('blog::admin.partials.page-select', [
+                        'name' => 'canonical',
+                        'label' => 'Canonical Page',
+                        'selected' => '',
+                        'placeholder' => '— Self (this page is its own canonical) —',
+                        'help' => 'Point search engines to another post/category as the canonical version. Leave as “Self” unless this page duplicates another.',
+                    ])
+
                     {{-- Slug Preview --}}
                     <div>
                         <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Slug Preview</label>

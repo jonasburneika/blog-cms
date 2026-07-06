@@ -5,6 +5,7 @@ namespace BlogCms\Http\Controllers\Admin;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Models\BlogPost;
+use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -55,6 +56,7 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'canonical' => 'nullable|string',
             'faqs' => 'nullable|array',
             'faqs.*.question' => 'required_with:faqs|string|max:500',
             'faqs.*.answer' => 'required_with:faqs|string',
@@ -68,8 +70,9 @@ class BlogPostController extends Controller
         ]);
 
         DB::transaction(function () use ($validated, $request) {
-            $postData = collect($validated)->except(['faqs', 'howto_steps', 'cover_desktop', 'cover_mobile'])->toArray();
+            $postData = collect($validated)->except(['faqs', 'howto_steps', 'cover_desktop', 'cover_mobile', 'canonical'])->toArray();
             $postData['user_id'] = $request->user()->id;
+            $postData = array_merge($postData, $this->canonicalColumns($request));
 
             $post = BlogPost::create($postData);
 
@@ -121,10 +124,12 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'canonical' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($validated, $post, $request) {
-            $postData = collect($validated)->except(['cover_desktop', 'cover_mobile'])->toArray();
+            $postData = collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray();
+            $postData = array_merge($postData, $this->canonicalColumns($request));
             $post->update($postData);
 
             if ($request->hasFile('cover_desktop')) {
@@ -147,5 +152,16 @@ class BlogPostController extends Controller
 
         return redirect()->route('admin.posts.index')
             ->with('success', 'Post deleted successfully.');
+    }
+
+    /** Resolve the canonical "type:id" picker value into columns (null = self). */
+    protected function canonicalColumns(Request $request): array
+    {
+        $canonical = PageUrl::parse($request->input('canonical'));
+
+        return [
+            'canonical_type' => $canonical['type'] ?? null,
+            'canonical_id' => $canonical['id'] ?? null,
+        ];
     }
 }

@@ -68,6 +68,15 @@
                     @enderror
                 </div>
 
+                {{-- Canonical --}}
+                @include('blog::admin.partials.page-select', [
+                    'name' => 'canonical',
+                    'label' => 'Canonical Page',
+                    'selected' => $category->canonicalValue(),
+                    'placeholder' => '— Self (this page is its own canonical) —',
+                    'help' => 'Point search engines to another post/category as the canonical version. Leave as “Self” unless this page duplicates another.',
+                ])
+
                 {{-- Description --}}
                 <div class="mb-5">
                     <label for="description" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Description</label>
