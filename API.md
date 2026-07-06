@@ -15,6 +15,24 @@ Single URL. Only `POST` required (optionally support `GET` for read actions). Al
 
 The optional `locale` query parameter sets the content language. If omitted, the system's default locale is used. It can also be passed in the request body.
 
+### Multilingual behavior (v2.0+)
+
+Content is stored **per locale** (spatie/laravel-translatable). The `locale` parameter now
+controls the language a request reads or writes:
+
+- **create / update**: text fields (`title`, `excerpt`, `content`, `meta_*`, `howto_*`,
+  `faq_title`; category `menu_title`, `description`) are written into the given `locale`. Sending
+  `update` for an existing post/category with a different `locale` **adds/merges** that language
+  without touching the others — this is how you attach a translation to existing content. Slugs are
+  auto-generated per locale from the title (or pass `slug` to set the current locale's slug).
+- **list / show**: pass `locale` to receive that language's values. Response text fields are
+  flattened to plain strings for the requested locale (default-locale fallback), and each item
+  includes `url` (locale-aware, with prefix for non-default locales) and `alternates`
+  (`{locale: url}` for every translated language). Listing with `locale` returns only items that
+  have a translation in that language.
+- Category references (`category` by slug/title) are matched in the requested locale, falling back
+  to the default locale.
+
 ---
 
 ## Authentication

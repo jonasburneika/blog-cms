@@ -6,6 +6,7 @@ use BlogCms\Models\BlogCategory;
 use BlogCms\Models\BlogPost;
 use Spatie\Sitemap\Sitemap;
 use Spatie\Sitemap\Tags\Url;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Builds the blog portion of the sitemap (categories + posts).
@@ -52,5 +53,58 @@ class SitemapBuilder
             });
 
         return $sitemap;
+    }
+
+    /**
+     * Multilingual sitemap: one entry per enabled locale for each category/post,
+     * with hreflang alternates cross-linking the translations. URLs come from
+     * PageUrl, so the app doesn't pass resolvers here.
+     */
+    public static function makeMultilingual(): Sitemap
+    {
+        $sitemap = Sitemap::create();
+        $locales = LocaleManager::all();
+
+        BlogCategory::query()
+            ->where('status', 'active')
+            ->hasReadablePosts()
+            ->get()
+            ->each(fn (BlogCategory $category) => static::addLocalized($sitemap, $category, $locales, 0.8, Url::CHANGE_FREQUENCY_WEEKLY));
+
+        BlogPost::query()
+            ->with('category')
+            ->readable()
+            ->get()
+            ->each(function (BlogPost $post) use ($sitemap, $locales) {
+                if ($post->category) {
+                    static::addLocalized($sitemap, $post, $locales, 0.7, Url::CHANGE_FREQUENCY_MONTHLY);
+                }
+            });
+
+        return $sitemap;
+    }
+
+    /** Add one <url> per locale for a model, each carrying all hreflang alternates. */
+    protected static function addLocalized(Sitemap $sitemap, Model $model, array $locales, float $priority, string $frequency): void
+    {
+        $alternates = PageUrl::alternates($model);
+
+        foreach ($locales as $locale) {
+            $url = PageUrl::urlFor($model, $locale);
+            if (! $url) {
+                continue;
+            }
+
+            $tag = Url::create($url)
+                ->setLastModificationDate($model->updated_at)
+                ->setChangeFrequency($frequency)
+                ->setPriority($priority);
+
+            foreach ($alternates as $altLocale => $altUrl) {
+                $tag->addAlternate($altUrl, $altLocale);
+            }
+
+            $sitemap->add($tag);
+        }
     }
 }

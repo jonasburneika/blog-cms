@@ -53,6 +53,9 @@
 
         <form method="POST" action="{{ route('admin.posts.store') }}" enctype="multipart/form-data">
             @csrf
+            <input type="hidden" name="locale" value="{{ $locale }}">
+
+            @include('blog::admin.partials.locale-switcher')
 
             {{-- Tab Navigation --}}
             <div class="mb-6 border-b border-warm-200 dark:border-neutral-700">

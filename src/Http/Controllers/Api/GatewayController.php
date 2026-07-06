@@ -2,16 +2,20 @@
 
 namespace BlogCms\Http\Controllers\Api;
 
+use BlogCms\Http\Controllers\Api\Concerns\HandlesApiLocale;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Models\BlogPost;
 use BlogCms\Models\BlogPostFaq;
 use BlogCms\Models\BlogPostHowToStep;
+use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class GatewayController extends Controller
 {
+    use HandlesApiLocale;
+
     public function handle(Request $request)
     {
         // Inject locale from URL param if not in body
@@ -45,26 +49,31 @@ class GatewayController extends Controller
     private function handleCategories(string $action, Request $request)
     {
         return match ($action) {
-            'list' => $this->categoryList(),
+            'list' => $this->categoryList($request),
             'create' => $this->categoryCreate($request),
             'update' => $this->categoryUpdate($request),
             default => response()->json(['error' => "Action '{$action}' not available for categories. Use: list, create, update"], 422),
         };
     }
 
-    private function categoryList()
+    private function categoryList(Request $request)
     {
-        return response()->json([
-            'data' => BlogCategory::orderBy('sort_order')
-                ->get(['id', 'title', 'slug', 'menu_title', 'description', 'meta_title', 'status', 'sort_order']),
-        ]);
+        $locale = $this->apiLocale($request);
+
+        $data = BlogCategory::orderBy('sort_order')->get()
+            ->map(fn ($c) => $this->presentInLocale($c, $locale));
+
+        return response()->json(['data' => $data]);
     }
 
     private function categoryCreate(Request $request)
     {
+        $locale = $this->apiLocale($request);
+        app()->setLocale($locale); // scalar fields land under the requested locale
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_categories,slug',
+            'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
@@ -72,16 +81,21 @@ class GatewayController extends Controller
             'sort_order' => 'nullable|integer',
         ]);
 
-        return response()->json(['data' => BlogCategory::create($validated)], 201);
+        $category = BlogCategory::create($validated);
+
+        return response()->json(['data' => $this->presentInLocale($category, $locale)], 201);
     }
 
     private function categoryUpdate(Request $request)
     {
         $category = BlogCategory::findOrFail($request->input('category_id'));
 
+        $locale = $this->apiLocale($request);
+        app()->setLocale($locale); // merge only the requested locale
+
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_categories,slug,' . $category->id,
+            'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
@@ -91,7 +105,7 @@ class GatewayController extends Controller
 
         $category->update($validated);
 
-        return response()->json(['data' => $category]);
+        return response()->json(['data' => $this->presentInLocale($category, $locale)]);
     }
 
     // ─── Posts ────────────────────────────────────────────────────
@@ -111,21 +125,23 @@ class GatewayController extends Controller
 
     private function postList(Request $request)
     {
+        $locale = $this->apiLocale($request);
+
         $posts = BlogPost::with(['category:id,title,slug', 'faqs', 'howToSteps'])
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->when($request->category_id, fn ($q, $id) => $q->where('blog_category_id', $id))
-            ->when($request->category, function ($q, $category) {
-                $q->whereHas('category', fn ($cq) => $cq->where('slug', $category)->orWhere('title', $category));
+            ->when($request->category, function ($q, $category) use ($locale) {
+                $q->whereHas('category', fn ($cq) => $cq->where("slug->{$locale}", $category)->orWhere("title->{$locale}", $category));
             })
-            ->when($request->locale, fn ($q, $locale) => $q->where('locale', $locale))
+            ->when($request->locale, fn ($q, $l) => $q->whereNotNull("title->{$l}"))
             ->latest()
             ->paginate($request->integer('per_page', 15));
 
-        $posts->getCollection()->transform(function ($post) {
-            $post->cover_desktop_url = $post->getFirstMediaUrl('cover_desktop');
-            $post->cover_mobile_url = $post->getFirstMediaUrl('cover_mobile');
-
-            return $post;
+        $posts->getCollection()->transform(function ($post) use ($locale) {
+            return array_merge($this->presentInLocale($post, $locale), [
+                'cover_desktop_url' => $post->getFirstMediaUrl('cover_desktop'),
+                'cover_mobile_url' => $post->getFirstMediaUrl('cover_mobile'),
+            ]);
         });
 
         return response()->json($posts);
@@ -133,26 +149,31 @@ class GatewayController extends Controller
 
     private function postShow(Request $request)
     {
+        $locale = $this->apiLocale($request);
         $post = $this->findPost($request);
         $post->load(['category:id,title,slug', 'faqs', 'howToSteps', 'media']);
 
+        $presented = $this->presentInLocale($post, $locale);
+
         return response()->json([
-            'data' => array_merge($post->toArray(), [
+            'data' => array_merge($presented, [
                 'cover_desktop_url' => $post->getFirstMediaUrl('cover_desktop'),
                 'cover_mobile_url' => $post->getFirstMediaUrl('cover_mobile'),
             ]),
-            'url' => url($post->category->slug . '/' . $post->slug),
+            'url' => $presented['url'],
         ]);
     }
 
     private function postCreate(Request $request)
     {
-        $this->resolveCategory($request);
-        $this->resolveLocale($request);
+        $locale = $this->apiLocale($request);
+        $request->merge(['locale' => $locale]);
+        $this->resolveCategory($request, $locale);
+        app()->setLocale($locale); // scalar translatable fields land under this locale
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_posts,slug',
+            'slug' => 'nullable|string|max:255',
             'blog_category_id' => 'required|exists:blog_categories,id',
             'status' => 'required|in:0,1,2',
             'locale' => 'nullable|string|max:10',
@@ -230,20 +251,25 @@ class GatewayController extends Controller
 
         $post->load(['category:id,title,slug', 'faqs', 'howToSteps', 'citations', 'topics', 'basedOn']);
 
+        $presented = $this->presentInLocale($post, $locale);
+
         return response()->json([
-            'data' => $post,
-            'url' => url($post->category->slug . '/' . $post->slug),
+            'data' => $presented,
+            'url' => $presented['url'],
         ], 201);
     }
 
     private function postUpdate(Request $request)
     {
         $post = $this->findPost($request);
-        $this->resolveCategory($request);
+
+        $locale = $this->apiLocale($request);
+        $this->resolveCategory($request, $locale);
+        app()->setLocale($locale); // merge only the requested locale
 
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_posts,slug,' . $post->id,
+            'slug' => 'nullable|string|max:255',
             'blog_category_id' => 'sometimes|required|exists:blog_categories,id',
             'status' => 'sometimes|required|in:0,1,2',
             'locale' => 'nullable|string|max:10',
@@ -289,9 +315,11 @@ class GatewayController extends Controller
 
         $post->load(['category:id,title,slug', 'faqs', 'howToSteps']);
 
+        $presented = $this->presentInLocale($post, $locale);
+
         return response()->json([
-            'data' => $post,
-            'url' => url($post->category->slug . '/' . $post->slug),
+            'data' => $presented,
+            'url' => $presented['url'],
         ]);
     }
 
@@ -494,23 +522,12 @@ class GatewayController extends Controller
         return BlogPost::findOrFail($request->input('post_id') ?? $request->input('id'));
     }
 
-    private function resolveCategory(Request $request): void
+    private function resolveCategory(Request $request, string $locale): void
     {
         if ($request->filled('category') && ! $request->filled('blog_category_id')) {
-            $category = BlogCategory::where('slug', $request->category)
-                ->orWhere('title', $request->category)
-                ->first();
-
-            if ($category) {
+            if ($category = $this->findCategoryByRef($request->category, $locale)) {
                 $request->merge(['blog_category_id' => $category->id]);
             }
-        }
-    }
-
-    private function resolveLocale(Request $request): void
-    {
-        if (! $request->filled('locale')) {
-            $request->merge(['locale' => config('app.locale')]);
         }
     }
 }

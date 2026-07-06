@@ -2,6 +2,7 @@
 
 namespace BlogCms\Http\Controllers\Admin;
 
+use BlogCms\Http\Controllers\Admin\Concerns\EditsTranslations;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Services\AnalyticsService;
@@ -10,6 +11,8 @@ use Illuminate\Http\Request;
 
 class BlogCategoryController extends Controller
 {
+    use EditsTranslations;
+
     public function index(Request $request)
     {
         $categories = BlogCategory::withCount('posts')
@@ -37,9 +40,9 @@ class BlogCategoryController extends Controller
         return view('blog::admin.categories.show', compact('category', 'posts', 'ga4Data', 'gscData'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('blog::admin.categories.create');
+        return view('blog::admin.categories.create', ['locale' => $this->editingLocale($request)]);
     }
 
     public function store(Request $request)
@@ -51,15 +54,20 @@ class BlogCategoryController extends Controller
             'description' => 'nullable|string',
             'status' => 'required|string',
             'sort_order' => 'nullable|integer',
+            'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
             'cover_desktop' => 'nullable|image|max:5120',
             'cover_mobile' => 'nullable|image|max:5120',
         ]);
 
-        $category = BlogCategory::create(array_merge(
-            collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray(),
+        $locale = $this->editingLocale($request);
+
+        $category = new BlogCategory(array_merge(
+            ['status' => $validated['status'], 'sort_order' => $validated['sort_order'] ?? 0],
             $this->canonicalColumns($request),
         ));
+        $this->fillTranslations($category, $request, $locale);
+        $category->save();
 
         if ($request->hasFile('cover_desktop')) {
             $category->addMediaFromRequest('cover_desktop')->toMediaCollection('cover_desktop');
@@ -72,9 +80,12 @@ class BlogCategoryController extends Controller
             ->with('success', 'Category created successfully.');
     }
 
-    public function edit(BlogCategory $category)
+    public function edit(Request $request, BlogCategory $category)
     {
-        return view('blog::admin.categories.edit', compact('category'));
+        return view('blog::admin.categories.edit', [
+            'category' => $category,
+            'locale' => $this->editingLocale($request),
+        ]);
     }
 
     public function update(Request $request, BlogCategory $category)
@@ -86,15 +97,20 @@ class BlogCategoryController extends Controller
             'description' => 'nullable|string',
             'status' => 'required|string',
             'sort_order' => 'nullable|integer',
+            'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
             'cover_desktop' => 'nullable|image|max:5120',
             'cover_mobile' => 'nullable|image|max:5120',
         ]);
 
-        $category->update(array_merge(
-            collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray(),
+        $locale = $this->editingLocale($request);
+
+        $category->fill(array_merge(
+            ['status' => $validated['status'], 'sort_order' => $validated['sort_order'] ?? $category->sort_order],
             $this->canonicalColumns($request),
         ));
+        $this->fillTranslations($category, $request, $locale);
+        $category->save();
 
         if ($request->hasFile('cover_desktop')) {
             $category->addMediaFromRequest('cover_desktop')->toMediaCollection('cover_desktop');

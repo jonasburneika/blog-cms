@@ -2,25 +2,33 @@
 
 namespace BlogCms\Http\Controllers\Api;
 
+use BlogCms\Http\Controllers\Api\Concerns\HandlesApiLocale;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use Illuminate\Http\Request;
 
 class BlogCategoryController extends Controller
 {
-    public function index()
+    use HandlesApiLocale;
+
+    public function index(Request $request)
     {
-        $categories = BlogCategory::orderBy('sort_order')
-            ->get(['id', 'title', 'slug', 'menu_title', 'description', 'meta_title', 'status', 'sort_order']);
+        $locale = $this->apiLocale($request);
+
+        $categories = BlogCategory::orderBy('sort_order')->get()
+            ->map(fn ($c) => $this->presentInLocale($c, $locale));
 
         return response()->json(['data' => $categories]);
     }
 
     public function store(Request $request)
     {
+        $locale = $this->apiLocale($request);
+        app()->setLocale($locale); // scalar fields land under the requested locale
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_categories,slug',
+            'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
@@ -30,14 +38,17 @@ class BlogCategoryController extends Controller
 
         $category = BlogCategory::create($validated);
 
-        return response()->json(['data' => $category], 201);
+        return response()->json(['data' => $this->presentInLocale($category, $locale)], 201);
     }
 
     public function update(Request $request, BlogCategory $category)
     {
+        $locale = $this->apiLocale($request);
+        app()->setLocale($locale); // merge only the requested locale
+
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:blog_categories,slug,' . $category->id,
+            'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'meta_title' => 'nullable|string|max:255',
@@ -47,6 +58,6 @@ class BlogCategoryController extends Controller
 
         $category->update($validated);
 
-        return response()->json(['data' => $category]);
+        return response()->json(['data' => $this->presentInLocale($category, $locale)]);
     }
 }

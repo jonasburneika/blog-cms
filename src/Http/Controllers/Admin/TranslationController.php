@@ -172,7 +172,12 @@ class TranslationController extends Controller
             }
         }
 
-        return array_unique(array_merge($configLocale, $dirLocales, $dbLocales));
+        return array_values(array_unique(array_merge(
+            \BlogCms\Support\LocaleManager::all(),
+            $configLocale,
+            $dirLocales,
+            $dbLocales
+        )));
     }
 
     protected function getAvailableGroups(): array

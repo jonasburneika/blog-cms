@@ -3,6 +3,7 @@
 namespace BlogCms\Models;
 
 use BlogCms\Models\Concerns\HasCanonicalPage;
+use BlogCms\Models\Concerns\HasTranslatableSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,12 +12,24 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Spatie\Sluggable\HasSlug;
-use Spatie\Sluggable\SlugOptions;
+use Spatie\Translatable\HasTranslations;
 
 class BlogPost extends Model implements HasMedia
 {
-    use HasCanonicalPage, HasSlug, InteractsWithMedia, SoftDeletes;
+    use HasCanonicalPage, HasTranslatableSlug, HasTranslations, InteractsWithMedia, SoftDeletes;
+
+    /** Fields stored per-locale as JSON via spatie/laravel-translatable. */
+    public array $translatable = [
+        'title',
+        'slug',
+        'excerpt',
+        'content',
+        'meta_title',
+        'meta_description',
+        'howto_title',
+        'howto_description',
+        'faq_title',
+    ];
 
     const STATUS_DRAFT = 0;
     const STATUS_PUBLISHED = 1;
@@ -62,13 +75,6 @@ class BlogPost extends Model implements HasMedia
         return $query->where('status', self::STATUS_PUBLISHED)
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now());
-    }
-
-    public function getSlugOptions(): SlugOptions
-    {
-        return SlugOptions::create()
-            ->generateSlugsFrom('title')
-            ->saveSlugsTo('slug');
     }
 
     public function category(): BelongsTo

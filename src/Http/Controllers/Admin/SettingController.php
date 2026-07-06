@@ -5,6 +5,7 @@ namespace BlogCms\Http\Controllers\Admin;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\Setting;
 use BlogCms\Services\AnalyticsService;
+use BlogCms\Support\LocaleManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -35,9 +36,37 @@ class SettingController extends Controller
             'api' => [
                 'api_key' => Setting::get('api_key', ''),
             ],
+            'languages' => [
+                'default_locale' => LocaleManager::default(),
+                'locales' => LocaleManager::all(),
+            ],
         ];
 
         return view('blog::admin.settings.index', compact('settings'));
+    }
+
+    public function updateLanguages(Request $request)
+    {
+        $validated = $request->validate([
+            'locales' => 'required|array|min:1',
+            'locales.*' => 'string|regex:/^[a-z]{2}(_[A-Z]{2})?$/',
+            'default_locale' => 'required|string',
+        ]);
+
+        $locales = array_values(array_unique($validated['locales']));
+
+        if (! in_array($validated['default_locale'], $locales, true)) {
+            return redirect()->route('admin.settings.index', ['tab' => 'languages'])
+                ->with('error', 'The default language must be one of the enabled languages.');
+        }
+
+        Setting::set('locales', $locales, 'languages', 'json');
+        Setting::set('default_locale', $validated['default_locale'], 'languages');
+
+        LocaleManager::flush();
+
+        return redirect()->route('admin.settings.index', ['tab' => 'languages'])
+            ->with('success', 'Language settings updated.');
     }
 
     public function updateGeneral(Request $request)

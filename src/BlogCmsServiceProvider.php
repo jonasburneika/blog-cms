@@ -6,11 +6,13 @@ use BlogCms\Http\Middleware\AddRobotsHeader;
 use BlogCms\Http\Middleware\AuthenticateApiKey;
 use BlogCms\Http\Middleware\HandleRedirects;
 use BlogCms\Models\BlogRedirect;
+use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use BlogCms\Translation\DatabaseLoader;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class BlogCmsServiceProvider extends ServiceProvider
@@ -34,7 +36,15 @@ class BlogCmsServiceProvider extends ServiceProvider
         $this->registerMiddleware();
         $this->registerRoutes();
         $this->registerModelObservers();
+        $this->shareLocales();
         $this->registerPublishing();
+    }
+
+    /** Expose the enabled/default content locales to every admin view. */
+    protected function shareLocales(): void
+    {
+        View::share('blogLocales', LocaleManager::all());
+        View::share('blogDefaultLocale', LocaleManager::default());
     }
 
     protected function registerMiddleware(): void
@@ -48,19 +58,13 @@ class BlogCmsServiceProvider extends ServiceProvider
         $router->pushMiddlewareToGroup('web', AddRobotsHeader::class);
     }
 
-    /**
-     * Keep redirect lookup paths in sync with slug/category moves, and drop
-     * redirects that point at (or come from) a deleted page.
-     */
+    /** Drop redirects that point at (or come from) a deleted page. */
     protected function registerModelObservers(): void
     {
         $postClass = config('blog-cms.models.post');
         $categoryClass = config('blog-cms.models.category');
 
-        $postClass::saved(fn (Model $post) => BlogRedirect::refreshForModel(PageUrl::TYPE_POST, $post->getKey()));
         $postClass::deleted(fn (Model $post) => BlogRedirect::purgeReferences(PageUrl::TYPE_POST, $post->getKey()));
-
-        $categoryClass::saved(fn (Model $category) => BlogRedirect::refreshForModel(PageUrl::TYPE_CATEGORY, $category->getKey()));
         $categoryClass::deleted(fn (Model $category) => BlogRedirect::purgeReferences(PageUrl::TYPE_CATEGORY, $category->getKey()));
     }
 

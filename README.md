@@ -109,6 +109,33 @@ field on the post/category SEO tab):
 > `php artisan migrate` after upgrading — the middleware queries the `blog_redirects` table on
 > front-end requests.
 
+## Multilingual content (spatie/laravel-translatable)
+
+Posts and categories store their text **per locale** as JSON (one row holds all
+languages). Slugs are translated too, and non-default locales are served under a URL
+prefix (`/lt/…`, `/de/…`; the default locale is unprefixed unless
+`blog-cms.locale_url.prefix_default` is true).
+
+- **Languages** are managed in **Settings → Languages**: enable/disable languages and pick
+  the default. Values live in the settings table and are read via
+  `BlogCms\Support\LocaleManager` (config `blog-cms.locales` / `default_locale` are the seed
+  fallback).
+- **Editing** is one language at a time: the post/category forms show a language switcher;
+  saving merges only the active locale, preserving the others.
+- **URLs & hreflang**: `BlogCms\Support\PageUrl::urlFor($model, $locale)` builds the localized
+  URL; `PageUrl::alternates($model)` returns `[locale => url]` for every translated locale.
+  `$model->canonical_url` resolves in the current locale; `$model->canonicalAlternates()` gives
+  the hreflang set. The theme renders `<link rel="canonical">` and `<link rel="alternate"
+  hreflang="…">` from these.
+- **Sitemap**: `SitemapBuilder::makeMultilingual()` emits one entry per locale with alternates.
+- **Redirects** are locale-aware: a localized source URL 301/302s to the target in the same
+  locale.
+
+> **Migrating from 1.x (breaking — 2.0):** run `php artisan migrate`. Existing scalar content is
+> wrapped into the site default locale; the per-post `locale` column is kept only as an
+> informational "source locale". The token API's `locale` param now selects which language to
+> read/write (see API.md) and responses resolve translatable fields to that locale.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

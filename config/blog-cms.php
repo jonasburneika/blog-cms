@@ -33,9 +33,27 @@ return [
     |--------------------------------------------------------------------------
     | Locales
     |--------------------------------------------------------------------------
-    | Locales the admin translation manager exposes. Apps override this.
+    | Seed/fallback list of content locales and the default locale. These are
+    | only the initial values — the admin "Settings → Languages" page persists
+    | overrides in the settings table, which BlogCms\Support\LocaleManager reads
+    | first. Content (posts/categories) is stored per-locale via
+    | spatie/laravel-translatable.
     */
     'locales' => ['en'],
+
+    'default_locale' => 'en',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Locale URLs
+    |--------------------------------------------------------------------------
+    | Non-default locales are served under a path prefix (/lt/…, /de/…). Set
+    | prefix_default to true to also prefix the default locale (/en/…). Slugs
+    | themselves are translated per locale.
+    */
+    'locale_url' => [
+        'prefix_default' => false,
+    ],
 
     /*
     |--------------------------------------------------------------------------

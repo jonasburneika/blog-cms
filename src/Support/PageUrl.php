@@ -5,12 +5,14 @@ namespace BlogCms\Support;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Resolves the front-end URL of a blog page (post or category).
+ * Resolves the front-end URL of a blog page (post or category) in a given
+ * locale. Slugs are translated per-locale (spatie/laravel-translatable) and
+ * non-default locales are served under a path prefix (see LocaleManager).
  *
- * The app owns final URL structure, but the token API (GatewayController)
- * already commits to `{category_slug}/{post_slug}` for posts and `{slug}` for
- * categories, so redirects and canonicals resolve against the same contract to
- * stay consistent. Kept in one place so the structure is changed once.
+ * The app owns final URL structure, but the token API already commits to
+ * `{prefix}/{category_slug}/{post_slug}` for posts and `{prefix}/{slug}` for
+ * categories, so redirects, canonicals and the sitemap resolve against the same
+ * contract. Kept in one place so the structure is changed once.
  */
 class PageUrl
 {
@@ -20,50 +22,81 @@ class PageUrl
     public const TYPES = [self::TYPE_POST, self::TYPE_CATEGORY];
 
     /**
-     * Normalized path (no leading/trailing slash) for a type + id, or null if
-     * the page can't be resolved (missing record, post without a category).
+     * Normalized path (no leading/trailing slash) for a type + id in a locale,
+     * or null if the page can't be resolved in that locale.
      */
-    public static function path(string $type, int|string $id): ?string
+    public static function path(string $type, int|string $id, ?string $locale = null): ?string
     {
         $model = static::model($type, $id);
 
-        return $model ? static::pathFor($model) : null;
+        return $model ? static::pathFor($model, $locale) : null;
     }
 
-    /** Absolute URL for a type + id, or null when unresolvable. */
-    public static function url(string $type, int|string $id): ?string
+    /** Absolute URL for a type + id in a locale, or null when unresolvable. */
+    public static function url(string $type, int|string $id, ?string $locale = null): ?string
     {
-        $path = static::path($type, $id);
+        $path = static::path($type, $id, $locale);
 
         return $path === null ? null : url($path);
     }
 
-    /** Normalized path for a resolved model instance. */
-    public static function pathFor(Model $model): ?string
+    /** Normalized locale-prefixed path for a resolved model instance. */
+    public static function pathFor(Model $model, ?string $locale = null): ?string
     {
+        $locale ??= LocaleManager::current();
+        $prefix = LocaleManager::prefix($locale);
+
         if (static::isCategory($model)) {
-            return $model->slug ? trim($model->slug, '/') : null;
+            $slug = static::slug($model, $locale);
+
+            return $slug === null ? null : static::join($prefix, $slug);
         }
 
         if (static::isPost($model)) {
             $category = $model->relationLoaded('category') ? $model->category : $model->category()->first();
-
-            if (! $category || ! $category->slug || ! $model->slug) {
+            if (! $category) {
                 return null;
             }
 
-            return trim($category->slug.'/'.$model->slug, '/');
+            $categorySlug = static::slug($category, $locale);
+            $postSlug = static::slug($model, $locale);
+            if ($categorySlug === null || $postSlug === null) {
+                return null;
+            }
+
+            return static::join($prefix, $categorySlug, $postSlug);
         }
 
         return null;
     }
 
-    /** Absolute URL for a resolved model instance. */
-    public static function urlFor(Model $model): ?string
+    /** Absolute URL for a resolved model instance in a locale. */
+    public static function urlFor(Model $model, ?string $locale = null): ?string
     {
-        $path = static::pathFor($model);
+        $path = static::pathFor($model, $locale);
 
         return $path === null ? null : url($path);
+    }
+
+    /**
+     * hreflang alternates: [locale => absolute url] for every enabled locale in
+     * which the page has its own slug translation (no fallback).
+     *
+     * @return array<string, string>
+     */
+    public static function alternates(Model $model): array
+    {
+        $out = [];
+        foreach (LocaleManager::all() as $locale) {
+            if (! static::hasOwnSlug($model, $locale)) {
+                continue;
+            }
+            if ($url = static::urlFor($model, $locale)) {
+                $out[$locale] = $url;
+            }
+        }
+
+        return $out;
     }
 
     /** The short type key ('post'|'category') for a model instance, or null. */
@@ -72,7 +105,6 @@ class PageUrl
         if (static::isPost($model)) {
             return self::TYPE_POST;
         }
-
         if (static::isCategory($model)) {
             return self::TYPE_CATEGORY;
         }
@@ -80,12 +112,30 @@ class PageUrl
         return null;
     }
 
-    /** Resolve a type + id back to its model instance (null when not found). */
     public static function model(string $type, int|string $id): ?Model
     {
         $class = static::modelClass($type);
 
         return $class ? $class::find($id) : null;
+    }
+
+    /** Resolve a localized single-segment slug to a category, or null. */
+    public static function categoryBySlug(string $slug, string $locale): ?Model
+    {
+        $class = config('blog-cms.models.category');
+
+        return $class::query()->where("slug->{$locale}", $slug)->first();
+    }
+
+    /** Resolve a localized category+post slug pair to a post, or null. */
+    public static function postBySlug(string $categorySlug, string $postSlug, string $locale): ?Model
+    {
+        $postClass = config('blog-cms.models.post');
+
+        return $postClass::query()
+            ->where("slug->{$locale}", $postSlug)
+            ->whereHas('category', fn ($q) => $q->where("slug->{$locale}", $categorySlug))
+            ->first();
     }
 
     public static function modelClass(string $type): ?string
@@ -99,38 +149,36 @@ class PageUrl
 
     /**
      * Flat option list of every selectable page, grouped for <optgroup>.
-     * Value format: "post:{id}" / "category:{id}".
+     * Labels use the default-locale title for stability.
      *
      * @return array<string, array<int, array{value: string, label: string}>>
      */
     public static function options(): array
     {
+        $default = LocaleManager::default();
         $categoryClass = config('blog-cms.models.category');
         $postClass = config('blog-cms.models.post');
 
-        $categories = $categoryClass::query()
-            ->orderBy('title')
-            ->get()
+        $categories = $categoryClass::query()->get()
             ->map(fn ($c) => [
                 'value' => self::TYPE_CATEGORY.':'.$c->getKey(),
-                'label' => $c->title,
+                'label' => (string) ($c->getTranslation('title', $default, true) ?: '#'.$c->getKey()),
             ])
-            ->all();
+            ->sortBy('label')->values()->all();
 
-        $posts = $postClass::query()
-            ->with('category:id,title')
-            ->orderBy('title')
-            ->get()
-            ->map(fn ($p) => [
-                'value' => self::TYPE_POST.':'.$p->getKey(),
-                'label' => $p->title.($p->category ? ' — '.$p->category->title : ''),
-            ])
-            ->all();
+        $posts = $postClass::query()->with('category')->get()
+            ->map(function ($p) use ($default) {
+                $title = (string) ($p->getTranslation('title', $default, true) ?: '#'.$p->getKey());
+                $cat = $p->category ? $p->category->getTranslation('title', $default, true) : null;
 
-        return [
-            'Categories' => $categories,
-            'Posts' => $posts,
-        ];
+                return [
+                    'value' => self::TYPE_POST.':'.$p->getKey(),
+                    'label' => $title.($cat ? ' — '.$cat : ''),
+                ];
+            })
+            ->sortBy('label')->values()->all();
+
+        return ['Categories' => $categories, 'Posts' => $posts];
     }
 
     /**
@@ -152,6 +200,26 @@ class PageUrl
         }
 
         return ['type' => $type, 'id' => (int) $id];
+    }
+
+    // ─── internals ───────────────────────────────────────────────
+
+    /** Slug for a locale, falling back to the default-locale slug. */
+    protected static function slug(Model $model, string $locale): ?string
+    {
+        $slug = $model->getTranslation('slug', $locale, true); // allow fallback
+
+        return $slug ? trim($slug, '/') : null;
+    }
+
+    protected static function hasOwnSlug(Model $model, string $locale): bool
+    {
+        return (bool) $model->getTranslation('slug', $locale, false); // no fallback
+    }
+
+    protected static function join(string ...$parts): string
+    {
+        return implode('/', array_filter($parts, fn ($p) => $p !== '' && $p !== null));
     }
 
     protected static function isPost(Model $model): bool

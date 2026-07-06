@@ -3,6 +3,7 @@
 namespace BlogCms\Models;
 
 use BlogCms\Models\Concerns\HasCanonicalPage;
+use BlogCms\Models\Concerns\HasTranslatableSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,12 +11,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Spatie\Sluggable\HasSlug;
-use Spatie\Sluggable\SlugOptions;
+use Spatie\Translatable\HasTranslations;
 
 class BlogCategory extends Model implements HasMedia
 {
-    use HasCanonicalPage, HasSlug, InteractsWithMedia, SoftDeletes;
+    use HasCanonicalPage, HasTranslatableSlug, HasTranslations, InteractsWithMedia, SoftDeletes;
+
+    /** Fields stored per-locale as JSON via spatie/laravel-translatable. */
+    public array $translatable = [
+        'title',
+        'menu_title',
+        'slug',
+        'description',
+        'meta_title',
+    ];
 
     protected $fillable = [
         'title',
@@ -26,13 +35,6 @@ class BlogCategory extends Model implements HasMedia
         'status',
         'sort_order',
     ];
-
-    public function getSlugOptions(): SlugOptions
-    {
-        return SlugOptions::create()
-            ->generateSlugsFrom('title')
-            ->saveSlugsTo('slug');
-    }
 
     public function scopeHasReadablePosts(Builder $query): Builder
     {

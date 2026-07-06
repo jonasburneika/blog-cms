@@ -76,6 +76,16 @@
                         class="px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
                     General
                 </button>
+                <button type="button" @click="switchTab('languages')"
+                        :class="activeTab === 'languages'
+                            ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                            : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-neutral-600'"
+                        class="inline-flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                    </svg>
+                    Languages
+                </button>
                 <button type="button" @click="switchTab('gsc')"
                         :class="activeTab === 'gsc'
                             ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
@@ -188,6 +198,87 @@
                         <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- ============================================================ --}}
+        {{-- Languages Tab --}}
+        {{-- ============================================================ --}}
+        <div x-show="activeTab === 'languages'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+            <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
+                <h2 class="text-lg font-semibold text-warm-900 dark:text-warm-100 mb-1">Languages</h2>
+                <p class="text-sm text-stone-500 dark:text-stone-400 mb-6">Choose which languages your posts and categories are available in, and which one is the default (served without a URL prefix).</p>
+
+                @error('locales')<p class="mb-4 text-sm text-red-500">{{ $message }}</p>@enderror
+                @error('locales.*')<p class="mb-4 text-sm text-red-500">Language codes must look like <code>en</code> or <code>en_US</code>.</p>@enderror
+
+                <form method="POST" action="{{ route('admin.settings.update.languages') }}"
+                      x-data="{
+                          locales: @js(array_values($settings['languages']['locales'])),
+                          def: @js($settings['languages']['default_locale']),
+                          adding: '',
+                          common: { en:'English', lt:'Lietuvių', lv:'Latviešu', et:'Eesti', ru:'Русский', de:'Deutsch', fr:'Français', es:'Español', pl:'Polski', it:'Italiano', uk:'Українська', fi:'Suomi', sv:'Svenska', nb:'Norsk' },
+                          add() {
+                              let code = (this.adding || '').trim();
+                              if (!/^[a-z]{2}(_[A-Z]{2})?$/.test(code)) { alert('Use a code like en or en_US'); return; }
+                              if (!this.locales.includes(code)) this.locales.push(code);
+                              this.adding = '';
+                          },
+                          remove(code) {
+                              if (this.locales.length <= 1) return;
+                              this.locales = this.locales.filter(l => l !== code);
+                              if (this.def === code) this.def = this.locales[0];
+                          },
+                          label(code) { return this.common[code] || code; }
+                      }">
+                    @csrf
+                    @method('PUT')
+
+                    <div class="space-y-2 mb-6">
+                        <template x-for="code in locales" :key="code">
+                            <div class="flex items-center justify-between gap-3 px-4 py-3 bg-warm-50 dark:bg-neutral-900 border border-warm-200 dark:border-neutral-700 rounded-lg">
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input type="radio" name="default_locale" :value="code" x-model="def"
+                                           class="text-amber-600 focus:ring-amber-500">
+                                    <input type="hidden" name="locales[]" :value="code">
+                                    <span class="text-sm font-medium text-warm-900 dark:text-warm-100" x-text="label(code)"></span>
+                                    <code class="text-xs text-stone-400 dark:text-stone-500" x-text="code"></code>
+                                    <span x-show="def === code" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Default</span>
+                                </label>
+                                <button type="button" @click="remove(code)" :disabled="locales.length <= 1"
+                                        class="text-xs font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed">
+                                    Remove
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- Add a language --}}
+                    <div class="flex flex-wrap items-center gap-2 mb-6">
+                        <select x-model="adding"
+                                class="bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="">— pick a common language —</option>
+                            <template x-for="(name, code) in common" :key="code">
+                                <option :value="code" x-text="name + ' (' + code + ')'"></option>
+                            </template>
+                        </select>
+                        <span class="text-xs text-stone-400 dark:text-stone-500">or</span>
+                        <input type="text" x-model="adding" placeholder="custom code, e.g. lt"
+                               class="bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500 w-40">
+                        <button type="button" @click="add()"
+                                class="inline-flex items-center gap-1 px-4 py-2 bg-stone-200 dark:bg-neutral-700 text-stone-700 dark:text-stone-300 text-sm font-medium rounded-lg hover:bg-stone-300 dark:hover:bg-neutral-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Add
+                        </button>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            Save Languages
                         </button>
                     </div>
                 </form>

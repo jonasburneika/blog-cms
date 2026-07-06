@@ -17,6 +17,9 @@
         <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
             <form method="POST" action="{{ route('admin.categories.store') }}" enctype="multipart/form-data">
                 @csrf
+                <input type="hidden" name="locale" value="{{ $locale }}">
+
+                @include('blog::admin.partials.locale-switcher')
 
                 {{-- Title --}}
                 <div class="mb-5">

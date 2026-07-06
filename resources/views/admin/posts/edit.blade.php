@@ -81,6 +81,11 @@
         <form method="POST" action="{{ route('admin.posts.update', $post) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
+            <input type="hidden" name="locale" value="{{ $locale }}">
+
+            @include('blog::admin.partials.locale-switcher')
+
+            @php($tv = fn ($f) => old($f, $post->getTranslation($f, $locale, false)))
 
             {{-- Tab Navigation --}}
             <div class="mb-6 border-b border-warm-200 dark:border-neutral-700">
@@ -158,7 +163,7 @@
                         {{-- Title --}}
                         <div class="lg:col-span-2">
                             <label for="title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Title</label>
-                            <input type="text" name="title" id="title" value="{{ old('title', $post->title) }}" required
+                            <input type="text" name="title" id="title" value="{{ $tv('title') }}" required
                                    class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                                    placeholder="Post title">
                             @error('title')
@@ -202,7 +207,7 @@
                             <label for="excerpt" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Excerpt</label>
                             <textarea name="excerpt" id="excerpt" rows="3"
                                       class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
-                                      placeholder="Brief summary of the post">{{ old('excerpt', $post->excerpt) }}</textarea>
+                                      placeholder="Brief summary of the post">{{ $tv('excerpt') }}</textarea>
                             @error('excerpt')
                                 <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
@@ -323,7 +328,7 @@
                         }
                     }">
                         <textarea x-ref="contentEditor" style="display:none;"></textarea>
-                        <input type="hidden" name="content" x-ref="contentHidden" value="{{ old('content', $post->content) }}">
+                        <input type="hidden" name="content" x-ref="contentHidden" value="{{ $tv('content') }}">
                     </div>
                     @error('content')
                         <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -336,7 +341,7 @@
                 <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
                     <div class="mb-5">
                         <label for="meta_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Meta Title</label>
-                        <input type="text" name="meta_title" id="meta_title" value="{{ old('meta_title', $post->meta_title) }}"
+                        <input type="text" name="meta_title" id="meta_title" value="{{ $tv('meta_title') }}"
                                class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                                placeholder="SEO title (leave empty to use post title)">
                         @error('meta_title')
@@ -348,7 +353,7 @@
                         <label for="meta_description" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Meta Description</label>
                         <textarea name="meta_description" id="meta_description" rows="3"
                                   class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
-                                  placeholder="Brief description for search engines (150-160 characters recommended)">{{ old('meta_description', $post->meta_description) }}</textarea>
+                                  placeholder="Brief description for search engines (150-160 characters recommended)">{{ $tv('meta_description') }}</textarea>
                         @error('meta_description')
                             <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
@@ -366,7 +371,7 @@
                     <div>
                         <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Slug Preview</label>
                         <div class="px-4 py-2.5 bg-stone-100 dark:bg-neutral-900 border border-stone-200 dark:border-neutral-700 rounded-lg text-sm text-stone-500 dark:text-stone-400">
-                            <span class="text-stone-400 dark:text-stone-500">/blog/</span><span class="text-stone-600 dark:text-stone-300">{{ $post->slug }}</span>
+                            <span class="text-stone-400 dark:text-stone-500">/blog/</span><span class="text-stone-600 dark:text-stone-300">{{ $post->getTranslation('slug', $locale, false) ?: '(auto)' }}</span>
                         </div>
                         <p class="mt-1.5 text-xs text-stone-400 dark:text-stone-500">The slug is generated from the post title and cannot be manually changed.</p>
                     </div>
@@ -379,7 +384,7 @@
                     {{-- FAQ Title --}}
                     <div class="mb-6 pb-6 border-b border-warm-200 dark:border-neutral-700">
                         <label for="faq_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">FAQ Section Title</label>
-                        <input type="text" name="faq_title" id="faq_title" value="{{ old('faq_title', $post->faq_title) }}"
+                        <input type="text" name="faq_title" id="faq_title" value="{{ $tv('faq_title') }}"
                                class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                                placeholder="e.g. Frequently Asked Questions About Beer Brewing">
                         <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Heading displayed above FAQ section. Defaults to "Frequently Asked Questions" if empty.</p>
@@ -474,7 +479,7 @@
                     {{-- HowTo Title for Schema.org --}}
                     <div class="mb-6 pb-6 border-b border-warm-200 dark:border-neutral-700">
                         <label for="howto_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">HowTo Title</label>
-                        <input type="text" name="howto_title" id="howto_title" value="{{ old('howto_title', $post->howto_title) }}"
+                        <input type="text" name="howto_title" id="howto_title" value="{{ $tv('howto_title') }}"
                                class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                                placeholder="e.g. How to Tie a Tie">
                         <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Used as the Schema.org HowTo "name" property. Leave empty to use the post title.</p>
@@ -488,7 +493,7 @@
                         <label for="howto_description" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Short Description</label>
                         <textarea name="howto_description" id="howto_description" rows="2"
                                   class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
-                                  placeholder="Brief description of what this how-to guide covers">{{ old('howto_description', $post->howto_description) }}</textarea>
+                                  placeholder="Brief description of what this how-to guide covers">{{ $tv('howto_description') }}</textarea>
                         <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Used as the Schema.org HowTo "description" property.</p>
                         @error('howto_description')
                             <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>

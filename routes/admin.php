@@ -87,6 +87,7 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     // Settings
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [SettingController::class, 'index'])->name('index');
+        Route::put('/languages', [SettingController::class, 'updateLanguages'])->name('update.languages');
         Route::put('/general', [SettingController::class, 'updateGeneral'])->name('update.general');
         Route::put('/gsc', [SettingController::class, 'updateGsc'])->name('update.gsc');
         Route::put('/ga4', [SettingController::class, 'updateGa4'])->name('update.ga4');

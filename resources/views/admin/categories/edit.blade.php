@@ -32,11 +32,16 @@
             <form method="POST" action="{{ route('admin.categories.update', $category) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="locale" value="{{ $locale }}">
+
+                @include('blog::admin.partials.locale-switcher')
+
+                @php($tv = fn ($f) => old($f, $category->getTranslation($f, $locale, false)))
 
                 {{-- Title --}}
                 <div class="mb-5">
                     <label for="title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Title</label>
-                    <input type="text" name="title" id="title" value="{{ old('title', $category->title) }}" required
+                    <input type="text" name="title" id="title" value="{{ $tv('title') }}" required
                            class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                            placeholder="Category title (used as page heading)">
                     @error('title')
@@ -47,7 +52,7 @@
                 {{-- Menu Title --}}
                 <div class="mb-5">
                     <label for="menu_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Menu Title</label>
-                    <input type="text" name="menu_title" id="menu_title" value="{{ old('menu_title', $category->menu_title) }}"
+                    <input type="text" name="menu_title" id="menu_title" value="{{ $tv('menu_title') }}"
                            class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                            placeholder="Short title for navigation menus">
                     <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Shorter version for menus/navigation. Falls back to Title if empty.</p>
@@ -59,7 +64,7 @@
                 {{-- Meta Title --}}
                 <div class="mb-5">
                     <label for="meta_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Meta Title</label>
-                    <input type="text" name="meta_title" id="meta_title" value="{{ old('meta_title', $category->meta_title) }}"
+                    <input type="text" name="meta_title" id="meta_title" value="{{ $tv('meta_title') }}"
                            class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
                            placeholder="SEO title for browser tab and search results">
                     <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Falls back to Title if empty. Recommended: 50-60 characters.</p>
@@ -82,7 +87,7 @@
                     <label for="description" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Description</label>
                     <textarea name="description" id="description" rows="3"
                               class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
-                              placeholder="Brief description of the category">{{ old('description', $category->description) }}</textarea>
+                              placeholder="Brief description of the category">{{ $tv('description') }}</textarea>
                     @error('description')
                         <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror

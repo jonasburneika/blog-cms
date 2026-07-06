@@ -2,15 +2,19 @@
 
 namespace BlogCms\Http\Controllers\Admin;
 
+use BlogCms\Http\Controllers\Admin\Concerns\EditsTranslations;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Models\BlogPost;
+use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BlogPostController extends Controller
 {
+    use EditsTranslations;
+
     public function index(Request $request)
     {
         $posts = BlogPost::with(['category', 'author'])
@@ -32,11 +36,14 @@ class BlogPostController extends Controller
         return view('blog::admin.posts.index', compact('posts', 'categories'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $categories = BlogCategory::orderBy('title')->get();
 
-        return view('blog::admin.posts.create', compact('categories'));
+        return view('blog::admin.posts.create', [
+            'categories' => $categories,
+            'locale' => $this->editingLocale($request),
+        ]);
     }
 
     public function store(Request $request)
@@ -56,6 +63,7 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
             'faqs' => 'nullable|array',
             'faqs.*.question' => 'required_with:faqs|string|max:500',
@@ -69,12 +77,19 @@ class BlogPostController extends Controller
             'howto_steps.*.sort_order' => 'nullable|integer',
         ]);
 
-        DB::transaction(function () use ($validated, $request) {
-            $postData = collect($validated)->except(['faqs', 'howto_steps', 'cover_desktop', 'cover_mobile', 'canonical'])->toArray();
-            $postData['user_id'] = $request->user()->id;
-            $postData = array_merge($postData, $this->canonicalColumns($request));
+        $locale = $this->editingLocale($request);
 
-            $post = BlogPost::create($postData);
+        DB::transaction(function () use ($validated, $request, $locale) {
+            $post = new BlogPost(array_merge([
+                'blog_category_id' => $validated['blog_category_id'],
+                'status' => $validated['status'],
+                'is_featured' => $request->boolean('is_featured'),
+                'published_at' => $validated['published_at'] ?? null,
+                'locale' => $locale,
+            ], $this->canonicalColumns($request)));
+            $post->user_id = $request->user()->id;
+            $this->fillTranslations($post, $request, $locale);
+            $post->save();
 
             if ($request->hasFile('cover_desktop')) {
                 $post->addMediaFromRequest('cover_desktop')->toMediaCollection('cover_desktop');
@@ -100,11 +115,15 @@ class BlogPostController extends Controller
             ->with('success', 'Post created successfully.');
     }
 
-    public function edit(BlogPost $post)
+    public function edit(Request $request, BlogPost $post)
     {
         $categories = BlogCategory::orderBy('title')->get();
 
-        return view('blog::admin.posts.edit', compact('post', 'categories'));
+        return view('blog::admin.posts.edit', [
+            'post' => $post,
+            'categories' => $categories,
+            'locale' => $this->editingLocale($request),
+        ]);
     }
 
     public function update(Request $request, BlogPost $post)
@@ -124,13 +143,21 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($validated, $post, $request) {
-            $postData = collect($validated)->except(['cover_desktop', 'cover_mobile', 'canonical'])->toArray();
-            $postData = array_merge($postData, $this->canonicalColumns($request));
-            $post->update($postData);
+        $locale = $this->editingLocale($request);
+
+        DB::transaction(function () use ($validated, $post, $request, $locale) {
+            $post->fill(array_merge([
+                'blog_category_id' => $validated['blog_category_id'],
+                'status' => $validated['status'],
+                'is_featured' => $request->boolean('is_featured'),
+                'published_at' => $validated['published_at'] ?? $post->published_at,
+            ], $this->canonicalColumns($request)));
+            $this->fillTranslations($post, $request, $locale);
+            $post->save();
 
             if ($request->hasFile('cover_desktop')) {
                 $post->clearMediaCollection('cover_desktop');

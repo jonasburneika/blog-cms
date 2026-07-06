@@ -22,10 +22,6 @@ return new class extends Migration
             // 301 (permanent) or 302 (temporary).
             $table->unsignedSmallInteger('status_code')->default(301);
 
-            // Cached, normalized path of the source page (e.g. "beer/my-post").
-            // Kept in sync via model observers; indexed for O(1) middleware lookup.
-            $table->string('source_path')->nullable()->unique();
-
             $table->timestamps();
 
             // Only one redirect may own a given source page.

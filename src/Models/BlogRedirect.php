@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Model;
  *
  * The source is always an existing post/category; visiting its URL 301/302s to
  * the target's *current* URL (resolved live, so the redirect follows the target
- * if the target later moves). `source_path` is a cached lookup key kept fresh by
- * the observers registered in BlogCmsServiceProvider.
+ * if it later moves). With per-locale slugs the middleware resolves the request
+ * path dynamically (strip locale prefix → localized slug → entity), so there is
+ * no cached path to keep in sync.
  */
 class BlogRedirect extends Model
 {
@@ -40,14 +41,6 @@ class BlogRedirect extends Model
         ];
     }
 
-    protected static function booted(): void
-    {
-        // Keep the cached lookup path in sync with the source entity on every write.
-        static::saving(function (self $redirect) {
-            $redirect->source_path = PageUrl::path($redirect->source_type, $redirect->source_id);
-        });
-    }
-
     // ─── Resolution ──────────────────────────────────────────────
 
     public function sourceModel(): ?Model
@@ -60,10 +53,19 @@ class BlogRedirect extends Model
         return PageUrl::model($this->target_type, $this->target_id);
     }
 
-    /** Absolute URL of the target page, resolved live. Null if unresolvable. */
-    public function targetUrl(): ?string
+    /** Absolute URL of the target page in the given locale, resolved live. */
+    public function targetUrl(?string $locale = null): ?string
     {
-        return PageUrl::url($this->target_type, $this->target_id);
+        return PageUrl::url($this->target_type, $this->target_id, $locale);
+    }
+
+    /** Look up the redirect owned by a given source entity, if any. */
+    public static function forSource(string $type, int|string $id): ?self
+    {
+        return static::query()
+            ->where('source_type', $type)
+            ->where('source_id', $id)
+            ->first();
     }
 
     public function sourceLabel(): string
@@ -82,37 +84,15 @@ class BlogRedirect extends Model
             return '(deleted)';
         }
 
-        return ucfirst($type).': '.($model->title ?? $model->getKey());
+        $title = $model->getTranslation('title', \BlogCms\Support\LocaleManager::default(), true);
+
+        return ucfirst($type).': '.($title ?: $model->getKey());
     }
 
     // ─── Maintenance (called by observers) ───────────────────────
 
-    /**
-     * Recompute source_path for every redirect whose source page moved because
-     * this entity was saved. A category slug change also moves its posts, so
-     * those redirects are refreshed too.
-     */
-    public static function refreshForModel(string $type, int $id): void
-    {
-        $postIds = [];
-
-        if ($type === PageUrl::TYPE_CATEGORY) {
-            $postClass = config('blog-cms.models.post');
-            $postIds = $postClass::where('blog_category_id', $id)->pluck('id')->all();
-        }
-
-        static::query()
-            ->where(fn ($q) => $q->where('source_type', $type)->where('source_id', $id))
-            ->when($postIds, fn ($q) => $q->orWhere(
-                fn ($sub) => $sub->where('source_type', PageUrl::TYPE_POST)->whereIn('source_id', $postIds)
-            ))
-            ->get()
-            ->each
-            ->save();
-    }
-
-    /** Remove redirects that reference a now-deleted entity (as source or target). */
-    public static function purgeReferences(string $type, int $id): void
+    /** Remove redirects that reference a now-deleted entity (source or target). */
+    public static function purgeReferences(string $type, int|string $id): void
     {
         static::query()
             ->where(fn ($q) => $q->where('source_type', $type)->where('source_id', $id))
