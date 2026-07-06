@@ -6,6 +6,7 @@ use BlogCms\Http\Controllers\Admin\BlogPostCitationController;
 use BlogCms\Http\Controllers\Admin\BlogPostController;
 use BlogCms\Http\Controllers\Admin\BlogPostFaqController;
 use BlogCms\Http\Controllers\Admin\BlogPostTopicController;
+use BlogCms\Http\Controllers\Admin\BlogAuthorProfileController;
 use BlogCms\Http\Controllers\Admin\BlogRedirectController;
 use BlogCms\Http\Controllers\Admin\BlogPostHookController;
 use BlogCms\Http\Controllers\Admin\BlogPostHowToStepController;
@@ -21,6 +22,7 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::resource('categories', BlogCategoryController::class);
     Route::resource('posts', BlogPostController::class);
     Route::resource('redirects', BlogRedirectController::class)->except(['show']);
+    Route::resource('authors', BlogAuthorProfileController::class)->except(['show'])->parameters(['authors' => 'author']);
     Route::prefix('posts/{post}/faqs')->name('posts.faqs.')->group(function () {
         Route::get('/', [BlogPostFaqController::class, 'index'])->name('index');
         Route::post('/', [BlogPostFaqController::class, 'store'])->name('store');

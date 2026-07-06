@@ -162,6 +162,29 @@ Read helpers (locale-aware, from `HasTableOfContents`): `$post->tableOfContents(
 (enabled + ≥2 entries). The API's post `list`/`show` responses also include `toc` and
 `content_rendered` for the requested locale. Run `php artisan migrate` to add the columns.
 
+## Automatic slug-change redirects
+
+When a **published** post's (or category's) slug changes, the old URL is recorded in
+`blog_url_history` and served with a 301 by `HandleRedirects` — so a changed slug never 404s.
+This is separate from the manual **Redirect Manager** (entity→entity): history is
+old-path→entity and fully automatic. A category rename also records the old URLs of its posts.
+Targets resolve live, so a slug that moves A→B→C redirects straight to C (no chains); loops and
+live-page shadowing are guarded. Run `php artisan migrate`.
+
+## Authors
+
+Author profiles live in the package (`blog_author_profiles`) so the app's `users` table is
+untouched. Each profile links to a user and adds a byline/`display_name`, `role`, **translatable
+bio**, avatar (MediaLibrary), social links, and an `is_indexable` flag (thin author pages stay
+noindex). Manage them under **Authors** in the admin.
+
+- `$post->authorProfile` — the writer's profile; the **Article schema** author node is enriched
+  with job title, avatar `image`, social `sameAs`, and (when indexable) the author-page `url`.
+- `BlogAuthorProfile`: `name()`, `avatarUrl()`, `socialLinks()`, `bio` (per locale),
+  `publishedPosts()`, `pageUrl()` / `pagePath()` (`author/{slug}`, prefix configurable via
+  `blog-cms.author_url.prefix`). The app owns the actual `/author/{slug}` route/template
+  (headless) and should `noindex` it unless `is_indexable`.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

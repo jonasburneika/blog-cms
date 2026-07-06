@@ -25,7 +25,7 @@ class SchemaBuilder
             ->description($post->meta_description ?: $post->excerpt)
             ->datePublished($post->published_at?->toIso8601String())
             ->dateModified($post->updated_at->toIso8601String())
-            ->author(Schema::person()->name(static::authorName($post)));
+            ->author(static::authorSchema($post));
 
         $coverUrl = static::coverUrl($post);
 
@@ -103,6 +103,41 @@ class SchemaBuilder
     protected static function authorName(BlogPost $post): string
     {
         return $post->author?->name ?: config('app.name');
+    }
+
+    /**
+     * Author Person node, enriched from the author's profile when present
+     * (job title, avatar, author-page url, social sameAs).
+     */
+    protected static function authorSchema(BlogPost $post): \Spatie\SchemaOrg\Person
+    {
+        $person = Schema::person()->name(static::authorName($post));
+
+        $profile = $post->relationLoaded('authorProfile')
+            ? $post->authorProfile
+            : $post->authorProfile()->first();
+
+        if (! $profile) {
+            return $person;
+        }
+
+        if ($profile->display_name) {
+            $person->name($profile->display_name);
+        }
+        if ($profile->role) {
+            $person->jobTitle($profile->role);
+        }
+        if ($avatar = $profile->avatarUrl()) {
+            $person->image($avatar);
+        }
+        if ($profile->is_indexable) {
+            $person->url($profile->pageUrl());
+        }
+        if ($sameAs = array_column($profile->socialLinks(), 'url')) {
+            $person->sameAs($sameAs);
+        }
+
+        return $person;
     }
 
     /**

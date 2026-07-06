@@ -6,7 +6,9 @@ use BlogCms\Http\Middleware\AddRobotsHeader;
 use BlogCms\Http\Middleware\AuthenticateApiKey;
 use BlogCms\Http\Middleware\HandleRedirects;
 use BlogCms\Models\BlogRedirect;
+use BlogCms\Models\BlogUrlHistory;
 use BlogCms\Observers\BlogPostTocObserver;
+use BlogCms\Services\UrlHistoryRecorder;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use BlogCms\Translation\DatabaseLoader;
@@ -65,8 +67,18 @@ class BlogCmsServiceProvider extends ServiceProvider
         $postClass = config('blog-cms.models.post');
         $categoryClass = config('blog-cms.models.category');
 
-        $postClass::deleted(fn (Model $post) => BlogRedirect::purgeReferences(PageUrl::TYPE_POST, $post->getKey()));
-        $categoryClass::deleted(fn (Model $category) => BlogRedirect::purgeReferences(PageUrl::TYPE_CATEGORY, $category->getKey()));
+        $postClass::deleted(function (Model $post) {
+            BlogRedirect::purgeReferences(PageUrl::TYPE_POST, $post->getKey());
+            BlogUrlHistory::purgeTarget(PageUrl::TYPE_POST, $post->getKey());
+        });
+        $categoryClass::deleted(function (Model $category) {
+            BlogRedirect::purgeReferences(PageUrl::TYPE_CATEGORY, $category->getKey());
+            BlogUrlHistory::purgeTarget(PageUrl::TYPE_CATEGORY, $category->getKey());
+        });
+
+        // Record old URLs automatically when a published slug changes.
+        $postClass::saved(fn (Model $post) => app(UrlHistoryRecorder::class)->recordPostChange($post));
+        $categoryClass::saved(fn (Model $category) => app(UrlHistoryRecorder::class)->recordCategoryChange($category));
 
         // Regenerate the per-locale table of contents when content changes.
         $postClass::observe(BlogPostTocObserver::class);

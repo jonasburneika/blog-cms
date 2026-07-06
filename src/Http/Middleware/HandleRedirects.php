@@ -3,6 +3,7 @@
 namespace BlogCms\Http\Middleware;
 
 use BlogCms\Models\BlogRedirect;
+use BlogCms\Models\BlogUrlHistory;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use Closure;
@@ -27,33 +28,43 @@ class HandleRedirects
             return $next($request);
         }
 
-        $path = trim($request->path(), '/');
-        if ($path === '' || $path === '/') {
+        $fullPath = trim($request->path(), '/');
+        if ($fullPath === '') {
             return $next($request);
         }
 
         // Peel off a locale prefix (/lt/…); default locale is usually unprefixed.
-        $locale = LocaleManager::detectPrefix($path);
-        if ($locale !== null) {
-            $path = trim(substr($path, strlen($locale)), '/');
-        }
+        $locale = LocaleManager::detectPrefix($fullPath);
+        $rest = $locale !== null ? trim(substr($fullPath, strlen($locale)), '/') : $fullPath;
         $resolveLocale = $locale ?? LocaleManager::default();
 
-        $entity = $this->resolveEntity($path, $resolveLocale);
-        if (! $entity) {
+        // Live page: honour a manual entity→entity redirect, otherwise serve it.
+        $entity = $this->resolveEntity($rest, $resolveLocale);
+        if ($entity) {
+            $redirect = BlogRedirect::forSource(PageUrl::typeOf($entity), $entity->getKey());
+            if ($redirect && ($target = $redirect->targetUrl($resolveLocale))) {
+                return $this->redirectTo($target, $redirect->status_code, $request);
+            }
+
             return $next($request);
         }
 
-        $redirect = BlogRedirect::forSource(PageUrl::typeOf($entity), $entity->getKey());
-        if ($redirect && ($target = $redirect->targetUrl($resolveLocale))) {
-            if ($query = $request->getQueryString()) {
-                $target .= (str_contains($target, '?') ? '&' : '?').$query;
-            }
-
-            return redirect()->away($target, $redirect->status_code);
+        // Dead path: an old URL from a slug change → send it to the current one.
+        $history = BlogUrlHistory::firstWhere('old_path', $fullPath);
+        if ($history && ($target = $history->targetUrl())) {
+            return $this->redirectTo($target, $history->status_code, $request);
         }
 
         return $next($request);
+    }
+
+    protected function redirectTo(string $target, int $status, Request $request): Response
+    {
+        if ($query = $request->getQueryString()) {
+            $target .= (str_contains($target, '?') ? '&' : '?').$query;
+        }
+
+        return redirect()->away($target, $status);
     }
 
     /** Resolve a locale-stripped path to a post (2 segments) or category (1). */

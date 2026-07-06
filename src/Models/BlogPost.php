@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -92,6 +93,12 @@ class BlogPost extends Model implements HasMedia
     public function author(): BelongsTo
     {
         return $this->belongsTo(config('blog-cms.models.user'), 'user_id');
+    }
+
+    /** The author's public profile (bio, avatar, socials), if one exists. */
+    public function authorProfile(): HasOne
+    {
+        return $this->hasOne(BlogAuthorProfile::class, 'user_id', 'user_id');
     }
 
     public function faqs(): HasMany
