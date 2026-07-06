@@ -63,6 +63,7 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'toc_enabled' => 'nullable|boolean',
             'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
             'faqs' => 'nullable|array',
@@ -85,6 +86,7 @@ class BlogPostController extends Controller
                 'status' => $validated['status'],
                 'is_featured' => $request->boolean('is_featured'),
                 'published_at' => $validated['published_at'] ?? null,
+                'toc_enabled' => $request->boolean('toc_enabled'),
                 'locale' => $locale,
             ], $this->canonicalColumns($request)));
             $post->user_id = $request->user()->id;
@@ -143,6 +145,7 @@ class BlogPostController extends Controller
             'howto_title' => 'nullable|string|max:255',
             'howto_description' => 'nullable|string',
             'faq_title' => 'nullable|string|max:255',
+            'toc_enabled' => 'nullable|boolean',
             'locale' => 'nullable|string',
             'canonical' => 'nullable|string',
         ]);
@@ -155,6 +158,7 @@ class BlogPostController extends Controller
                 'status' => $validated['status'],
                 'is_featured' => $request->boolean('is_featured'),
                 'published_at' => $validated['published_at'] ?? $post->published_at,
+                'toc_enabled' => $request->boolean('toc_enabled'),
             ], $this->canonicalColumns($request)));
             $this->fillTranslations($post, $request, $locale);
             $post->save();

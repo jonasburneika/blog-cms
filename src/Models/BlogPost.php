@@ -3,6 +3,7 @@
 namespace BlogCms\Models;
 
 use BlogCms\Models\Concerns\HasCanonicalPage;
+use BlogCms\Models\Concerns\HasTableOfContents;
 use BlogCms\Models\Concerns\HasTranslatableSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
 
 class BlogPost extends Model implements HasMedia
 {
-    use HasCanonicalPage, HasTranslatableSlug, HasTranslations, InteractsWithMedia, SoftDeletes;
+    use HasCanonicalPage, HasTableOfContents, HasTranslatableSlug, HasTranslations, InteractsWithMedia, SoftDeletes;
 
     /** Fields stored per-locale as JSON via spatie/laravel-translatable. */
     public array $translatable = [
@@ -59,6 +60,7 @@ class BlogPost extends Model implements HasMedia
         'howto_title',
         'howto_description',
         'faq_title',
+        'toc_enabled',
     ];
 
     protected function casts(): array
@@ -67,6 +69,11 @@ class BlogPost extends Model implements HasMedia
             'status' => 'integer',
             'is_featured' => 'boolean',
             'published_at' => 'datetime',
+            'toc_items' => 'array',
+            'content_rendered' => 'array',
+            'toc_hash' => 'array',
+            'toc_enabled' => 'boolean',
+            'toc_generated_at' => 'datetime',
         ];
     }
 

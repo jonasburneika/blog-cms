@@ -136,6 +136,32 @@ prefix (`/lt/…`, `/de/…`; the default locale is unprefixed unless
 > informational "source locale". The token API's `locale` param now selects which language to
 > read/write (see API.md) and responses resolve translatable fields to that locale.
 
+## Table of contents
+
+Each post gets an auto-generated, in-article table of contents built from its **H2/H3**
+headings. Generation happens once, in a `saving` observer (`BlogPostTocObserver`) via
+`BlogCms\Services\PostTocGenerator` — never on a frontend request — and is **per locale** (each
+translation produces its own TOC, since headings differ by language). The generator uses DOM
+parsing (not regex), slugifies headings into unique anchor ids (Lithuanian text transliterated),
+injects those ids into the stored HTML, and skips headings inside `nav`/`aside`/`footer` or
+elements flagged `data-toc-skip` / classed `related|author|widget|footnote|toc`.
+
+Stored per locale as JSON maps: `toc_items` (nested nav), `content_rendered` (HTML with ids),
+`toc_hash` (change detection); plus `toc_enabled` (bool, per post — toggle on the post form) and
+`toc_generated_at`.
+
+Render it in the app's post template:
+
+```blade
+@include('blog::partials.toc', ['post' => $post])
+{!! $post->renderedContent() !!}   {{-- body HTML with heading anchors --}}
+```
+
+Read helpers (locale-aware, from `HasTableOfContents`): `$post->tableOfContents($locale)`,
+`$post->renderedContent($locale)` (falls back to raw content), `$post->hasTableOfContents($locale)`
+(enabled + ≥2 entries). The API's post `list`/`show` responses also include `toc` and
+`content_rendered` for the requested locale. Run `php artisan migrate` to add the columns.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

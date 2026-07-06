@@ -44,10 +44,18 @@ trait HandlesApiLocale
             }
         }
 
-        return array_merge($data, [
+        $extra = [
             'url' => PageUrl::urlFor($model, $locale),
             'alternates' => PageUrl::alternates($model),
-        ]);
+        ];
+
+        // Posts expose their table of contents + anchored HTML for this locale.
+        if (method_exists($model, 'tableOfContents')) {
+            $extra['toc'] = $model->tableOfContents($locale);
+            $extra['content_rendered'] = $model->renderedContent($locale);
+        }
+
+        return array_merge($data, $extra);
     }
 
     /** Find a category by id, or by slug/title in the given (or default) locale. */

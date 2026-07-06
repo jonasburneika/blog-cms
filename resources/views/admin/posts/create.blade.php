@@ -308,6 +308,18 @@
                         'help' => 'Point search engines to another post/category as the canonical version. Leave as “Self” unless this page duplicates another.',
                     ])
 
+                    {{-- Table of contents --}}
+                    <div class="mb-5">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="hidden" name="toc_enabled" value="0">
+                            <input type="checkbox" name="toc_enabled" value="1"
+                                   {{ old('toc_enabled', '1') == '1' ? 'checked' : '' }}
+                                   class="rounded border-warm-300 dark:border-neutral-600 text-amber-600 focus:ring-amber-500">
+                            <span class="text-sm font-medium text-stone-700 dark:text-stone-300">Enable table of contents</span>
+                        </label>
+                        <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Auto-builds an in-article “Contents” list from the H2/H3 headings when the post is saved.</p>
+                    </div>
+
                     {{-- Slug Preview --}}
                     <div>
                         <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Slug Preview</label>

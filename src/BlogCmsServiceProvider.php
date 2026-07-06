@@ -6,6 +6,7 @@ use BlogCms\Http\Middleware\AddRobotsHeader;
 use BlogCms\Http\Middleware\AuthenticateApiKey;
 use BlogCms\Http\Middleware\HandleRedirects;
 use BlogCms\Models\BlogRedirect;
+use BlogCms\Observers\BlogPostTocObserver;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use BlogCms\Translation\DatabaseLoader;
@@ -66,6 +67,9 @@ class BlogCmsServiceProvider extends ServiceProvider
 
         $postClass::deleted(fn (Model $post) => BlogRedirect::purgeReferences(PageUrl::TYPE_POST, $post->getKey()));
         $categoryClass::deleted(fn (Model $category) => BlogRedirect::purgeReferences(PageUrl::TYPE_CATEGORY, $category->getKey()));
+
+        // Regenerate the per-locale table of contents when content changes.
+        $postClass::observe(BlogPostTocObserver::class);
     }
 
     protected function registerRoutes(): void
