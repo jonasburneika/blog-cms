@@ -55,6 +55,7 @@ class BlogPost extends Model implements HasMedia
         'locale',
         'is_featured',
         'views_count',
+        'likes_count',
         'published_at',
         'meta_title',
         'meta_description',
@@ -69,6 +70,8 @@ class BlogPost extends Model implements HasMedia
         return [
             'status' => 'integer',
             'is_featured' => 'boolean',
+            'views_count' => 'integer',
+            'likes_count' => 'integer',
             'published_at' => 'datetime',
             'toc_items' => 'array',
             'content_rendered' => 'array',

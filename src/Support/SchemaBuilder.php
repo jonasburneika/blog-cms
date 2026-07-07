@@ -59,6 +59,13 @@ class SchemaBuilder
             $articleSchema->isBasedOn($post->basedOn->pluck('url')->toArray());
         }
 
+        // Like count as schema.org UserLikes (interactionStatistic / InteractionCounter).
+        $articleSchema->interactionStatistic(
+            Schema::interactionCounter()
+                ->interactionType('https://schema.org/UserLikes')
+                ->userInteractionCount((int) ($post->likes_count ?? 0))
+        );
+
         return $articleSchema;
     }
 

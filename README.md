@@ -9,7 +9,9 @@ Extracted so multiple sites (e.g. a brewery blog, a soil-science blog) share one
 - **Models** — `BlogPost`, `BlogCategory`, `BlogPostFaq`, `BlogPostHowToStep`, `BlogPostHook`, `HookTemplate`, `GuestBlogRequest`, `Setting`, `Translation`
 - **Admin back-office** — full CRUD for posts, categories (with parent/child **hierarchy**), FAQs, how-to steps, content hooks, guest requests, translations, settings (routes under `/admin`, name prefix `admin.`)
 - **JSON API** — token-authenticated (`blog.apikey` middleware) endpoints + a single `gateway` action, for headless publishing
-- **SEO** — schema.org JSON-LD (`Article` + `FAQPage` + `HowTo`) as drop-in Blade components, `sitemap` builder, slugs
+- **SEO** — schema.org JSON-LD (`Article` + `FAQPage` + `HowTo` + `UserLikes`), `<x-blog::seo-meta>` head tags (robots/canonical/Open Graph/Twitter), `sitemap` builder, slugs
+- **Search** — cross-content `SearchService` (posts + all related content, categories, tags), public `/search` page + `<x-blog::search-form>` / `<x-blog::top-tags>` components
+- **Headers** — SEO response headers (noindex for `?q=` search, pagination canonical) + baseline security headers (HSTS, X-Frame-Options, nosniff, Referrer-/Permissions-Policy, optional CSP)
 - **Media** — Spatie MediaLibrary collections + conversions (thumb/preview)
 - **i18n** — file translations with DB overrides (admin-editable) via a custom translation loader
 - **Settings** — general, cache, and tracking (Google Search Console / GA4) settings + API-key management
@@ -230,6 +232,86 @@ Two mechanisms:
   responses are bounded by content-type + `media.max_image_bytes`. Restrict further with
   `media.allowed_image_hosts` (empty = any public host). Blocked/failed fetches are logged and the
   original `src` is left in place — they never break the save.
+
+## Search
+
+Site-wide search lives in `BlogCms\Services\SearchService`. A post is a hit when the term
+appears in the **post itself** (title/excerpt/content/meta, in the active locale) **or any of its
+related content** — FAQs, how-to steps, topics, citations, or "based on" sources. Categories and
+tags (post topics) are searched too.
+
+- `SearchService::search($term, $locale = null, $perPage = null)` → `['term', 'posts' (paginator),
+  'categories', 'tags']`. Granular methods: `posts()`, `categories()`, `tags()`, `topTags()`.
+- **Public page** — `GET /search?q=…` (route name `blog.search`) renders `blog::search`. Set
+  `config('blog-cms.search.route')` to `null` if your app owns `/?q=…` on its home route and calls
+  `SearchService` directly instead. Configure the query param (`q`) and `per_page` in the same block.
+- **Search results are never indexed** — any request carrying the search query param gets
+  `noindex, follow` (see below), so `/?q=…` and `/search?q=…` stay out of Google.
+- **Tags** are backed by **post topics** (`BlogPostTopic`). "Top tags" = the most-used topic names
+  across published posts (`SearchService::topTags()`, count from `config('blog-cms.tags.top_count')`).
+
+Two front-end Blade components (usable anywhere, e.g. in a themed layout):
+
+- `<x-blog::search-form />` — a search bar posting to the configured route/param.
+- `<x-blog::top-tags />` — the top-N tags, each linking to a search; self-fetches if no `:tags` passed.
+
+## SEO head tags (`<x-blog::seo-meta>`)
+
+Drop `<x-blog::seo-meta />` into your layout's `<head>` on every public page. It emits the
+`<meta name="robots">` tag (defaulting to **`index, follow`**, so audits stop flagging it as
+missing), `<link rel="canonical">` when paginating, and a **complete Open Graph + Twitter card**
+set (`og:*`, `twitter:card/site/title/description/image`). All props are optional and fall back to
+the settings table (`site_name`, `homepage_meta_*`, `site_description`) and
+`config('blog-cms.social.*')`, so even a bare front page gets a full set:
+
+```blade
+<x-blog::seo-meta title="{{ $post->title }}" description="{{ $post->meta_description }}"
+                  image="{{ \BlogCms\Support\SchemaBuilder::coverUrl($post) }}" type="article" />
+```
+
+The robots value and pagination canonical come from `BlogCms\Support\SeoMeta`, the same source the
+response headers use — so the header and the meta tag never disagree.
+
+### Robots & canonical response headers
+
+`AddRobotsHeader` (on the whole `web` group) sets, on every response:
+
+- `X-Robots-Tag: index, follow` normally; `noindex, follow` for **search** pages (`?q=`);
+  `noindex, nofollow` for `admin/*`, `login`, `register`.
+- `Link: <primary>; rel="canonical"` for **paginated** URLs (`?page=N`) → the primary page is the
+  same URL with `page` stripped (other params kept), so page 2..N don't compete with page 1.
+
+## Security headers
+
+`SecurityHeaders` (on the `web` group) adds a baseline set to every response, all configurable under
+`config('blog-cms.security_headers')` (set any to `null` to skip; existing headers are never
+overwritten):
+
+- `X-Frame-Options: SAMEORIGIN` (clickjacking), `X-Content-Type-Options: nosniff` (MIME sniffing),
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (locks down camera/mic/geo).
+- `Strict-Transport-Security` — **only sent over HTTPS**. Add `; preload` once your HTTPS is stable.
+- **CSP is off by default** (a wrong policy silently breaks a site). Set `content_security_policy`
+  (or trial with `content_security_policy_report_only`) to enable it.
+
+## 404 page
+
+Ship a 404 that keeps the visitor on the site. Publish the example into your app's error views:
+
+```
+php artisan vendor:publish --tag=blog-frontend   # → resources/views/errors/404.blade.php
+```
+
+It **extends your app layout** (`config('blog-cms.frontend.layout')`, with the content section from
+`…frontend.section`) so the header/footer — and navigation — are preserved, and it offers a search
+bar plus the top tags so users can recover. Leave `frontend.layout` `null` to use the package's
+minimal standalone layout (`blog::layouts.public`), which still includes a home link + search.
+
+## Like counts (schema.org UserLikes)
+
+Posts carry a `likes_count` column, surfaced in the Article JSON-LD as
+`interactionStatistic` → `InteractionCounter` with `interactionType`
+`https://schema.org/UserLikes`. The app owns the actual "like" action/endpoint; core just stores the
+count and renders the structured data.
 
 ## What the consuming app must still provide
 

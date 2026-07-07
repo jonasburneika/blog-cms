@@ -5,6 +5,7 @@ namespace BlogCms;
 use BlogCms\Http\Middleware\AddRobotsHeader;
 use BlogCms\Http\Middleware\AuthenticateApiKey;
 use BlogCms\Http\Middleware\HandleRedirects;
+use BlogCms\Http\Middleware\SecurityHeaders;
 use BlogCms\Models\BlogRedirect;
 use BlogCms\Models\BlogUrlHistory;
 use BlogCms\Observers\BlogPostTocObserver;
@@ -15,6 +16,7 @@ use BlogCms\Support\PageUrl;
 use BlogCms\Translation\DatabaseLoader;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -41,7 +43,14 @@ class BlogCmsServiceProvider extends ServiceProvider
         $this->registerRoutes();
         $this->registerModelObservers();
         $this->shareLocales();
+        $this->registerComponents();
         $this->registerPublishing();
+    }
+
+    /** Expose the package's anonymous Blade components as <x-blog::name>. */
+    protected function registerComponents(): void
+    {
+        Blade::anonymousComponentNamespace('blog::components', 'blog');
     }
 
     /** Expose the enabled/default content locales to every admin view. */
@@ -60,6 +69,8 @@ class BlogCmsServiceProvider extends ServiceProvider
         $router->prependMiddlewareToGroup('web', HandleRedirects::class);
         // X-Robots-Tag on every web response (noindex,nofollow for admin/auth paths).
         $router->pushMiddlewareToGroup('web', AddRobotsHeader::class);
+        // Baseline security headers (HSTS, X-Frame-Options, nosniff, …).
+        $router->pushMiddlewareToGroup('web', SecurityHeaders::class);
     }
 
     /** Drop redirects that point at (or come from) a deleted page. */
@@ -96,6 +107,12 @@ class BlogCmsServiceProvider extends ServiceProvider
             $this->loadRoutesFrom(__DIR__.'/../routes/admin.php');
         });
 
+        // Public front-end routes (search). The file no-ops when the search route
+        // is disabled via config('blog-cms.search.route').
+        Route::middleware('web')->group(function () {
+            $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
+        });
+
         // Stateless JSON API under /api. The api.php file applies the api-key
         // middleware (blog.apikey) around its route group.
         Route::middleware('api')->prefix('api')->group(function () {
@@ -120,5 +137,11 @@ class BlogCmsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/dist' => public_path('vendor/blog'),
         ], 'blog-assets');
+
+        // Example 404 into the app's error views (Laravel resolves errors.404
+        // from the app namespace, so it must live outside the blog:: namespace).
+        $this->publishes([
+            __DIR__.'/../resources/views/errors/404.blade.php' => resource_path('views/errors/404.blade.php'),
+        ], 'blog-frontend');
     }
 }
