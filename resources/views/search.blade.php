@@ -1,7 +1,7 @@
 @extends(config('blog-cms.frontend.layout') ?: 'blog::layouts.public')
 @use('BlogCms\Support\PageUrl')
 
-@section('title', $term !== '' ? 'Search: ' . $term : 'Search')
+@section('title', $term !== '' ? 'Search: ' . e($term) : 'Search')
 
 @section(config('blog-cms.frontend.section', 'content'))
     <section class="blog-search">
