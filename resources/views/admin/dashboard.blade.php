@@ -104,7 +104,7 @@
                                     </a>
                                 </td>
                                 <td class="px-6 py-3 text-stone-500 dark:text-stone-400">
-                                    {{ $post->category->name ?? '-' }}
+                                    {{ $post->category?->title ?? '-' }}
                                 </td>
                                 <td class="px-6 py-3">
                                     @if($post->status === \BlogCms\Models\BlogPost::STATUS_PUBLISHED)

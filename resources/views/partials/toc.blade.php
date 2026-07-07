@@ -3,7 +3,7 @@
 
     Usage from the app's post template:
         @include('blog::partials.toc', ['post' => $post])
-        {!! $post->renderedContent() !!}   {{-- body HTML with heading ids --}}
+        {!! $post->renderedContent() !!}   (renders the body HTML with heading ids)
 
     Params:
       $post    the blog post (uses HasTableOfContents)

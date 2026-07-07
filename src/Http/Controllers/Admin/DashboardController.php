@@ -12,13 +12,24 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $stats = [
-            'total_posts' => BlogPost::count(),
-            'total_categories' => BlogCategory::count(),
-            'pending_guest_requests' => GuestBlogRequest::where('status', 'pending')->count(),
-            'published_posts' => BlogPost::where('status', BlogPost::STATUS_PUBLISHED)->count(),
-        ];
+        $user = $request->user();
 
-        return view('blog::admin.dashboard', compact('stats'));
+        $totalPosts = BlogPost::count();
+        $publishedPosts = BlogPost::where('status', BlogPost::STATUS_PUBLISHED)->count();
+        $totalCategories = BlogCategory::count();
+        $pendingRequests = GuestBlogRequest::where('status', 'pending')->count();
+
+        $recentPosts = BlogPost::with('category')->latest()->take(5)->get();
+        $recentGuestRequests = GuestBlogRequest::latest()->take(5)->get();
+
+        return view('blog::admin.dashboard', compact(
+            'user',
+            'totalPosts',
+            'publishedPosts',
+            'totalCategories',
+            'pendingRequests',
+            'recentPosts',
+            'recentGuestRequests',
+        ));
     }
 }

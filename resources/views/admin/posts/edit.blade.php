@@ -1088,9 +1088,7 @@
         </form>
 
         {{-- Analytics Panel --}}
-        @php
-            $analyticsPath = '/' . ($post->category?->slug ?? '') . '/' . $post->slug;
-        @endphp
+        @php($analyticsPath = '/' . ($post->category?->slug ?? '') . '/' . $post->slug)
         @include('blog::admin.partials.analytics-panel', ['analyticsPath' => $analyticsPath])
     </div>
 @endsection
