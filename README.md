@@ -7,7 +7,7 @@ Extracted so multiple sites (e.g. a brewery blog, a soil-science blog) share one
 ## What's in core
 
 - **Models** — `BlogPost`, `BlogCategory`, `BlogPostFaq`, `BlogPostHowToStep`, `BlogPostHook`, `HookTemplate`, `GuestBlogRequest`, `Setting`, `Translation`
-- **Admin back-office** — full CRUD for posts, categories, FAQs, how-to steps, content hooks, guest requests, translations, settings (routes under `/admin`, name prefix `admin.`)
+- **Admin back-office** — full CRUD for posts, categories (with parent/child **hierarchy**), FAQs, how-to steps, content hooks, guest requests, translations, settings (routes under `/admin`, name prefix `admin.`)
 - **JSON API** — token-authenticated (`blog.apikey` middleware) endpoints + a single `gateway` action, for headless publishing
 - **SEO** — schema.org JSON-LD (`Article` + `FAQPage` + `HowTo`) as drop-in Blade components, `sitemap` builder, slugs
 - **Media** — Spatie MediaLibrary collections + conversions (thumb/preview)
@@ -185,6 +185,24 @@ noindex). Manage them under **Authors** in the admin.
   `blog-cms.author_url.prefix`). The app owns the actual `/author/{slug}` route/template
   (headless) and should `noindex` it unless `is_indexable`.
 
+## Category hierarchy
+
+Categories form a tree via a self-referencing `parent_id`. A **null `parent_id` means the
+category is a root** (top level); any other value nests it under that parent. The category
+form exposes a **Parent Category** picker whose first option, *“Root (top level)”*, clears the
+parent; every other option is labelled with its ancestry path (e.g. `Guides › Beginner`).
+
+- `BlogCategory::parent()` / `children()` — the belongs-to / has-many relations; `children` is
+  ordered by `sort_order`. `isRoot()` and the `roots()` scope select top-level categories.
+- **Cycle-safe** — the parent picker (and both admin + API validation) exclude the category
+  itself and its descendants, so a category can never be nested under its own subtree.
+  `subtreeIds()` returns the category plus every descendant; `parentOptionsFor($category)`
+  returns the eligible parents.
+- Deleting a parent **detaches** its children (`nullOnDelete` → they become roots) rather than
+  cascading the delete.
+- The **API** accepts `parent_id` on category create/update (same cycle guard) and returns it
+  in the serialized payload.
+
 ## Media
 
 Two mechanisms:
@@ -221,6 +239,12 @@ Core is deliberately not 100% turnkey — a few things are the app's job by desi
 - **Admin assets** — `resources/views/vendor/blog/layouts/admin.blade.php` (once published) loads its CSS/JS via `@vite(['resources/css/app.css', 'resources/css/admin.css', 'resources/js/app.js'])` plus three CDNs (Bunny Fonts, Jodit editor, Alpine.js). The app must provide those Vite entry points (Tailwind build). Shipping a self-contained compiled admin bundle in the package is planned but not yet done — see `resources/dist/`.
 - **API author** — posts created via the token API are attributed to `config('blog-cms.api.default_author_id')` (env `BLOG_CMS_API_AUTHOR_ID`, default `1`), because the API key authenticates the request, not a person.
 - **Frontend** — the entire public theme, routes, and URL structure (the sitemap/schema helpers plug into whatever URLs you choose).
+
+## Gotchas
+
+- **`status` is typed differently per model.** `BlogPost::$status` is an **integer** enum (`0`/`1`/`2` via `BlogPost::STATUS_DRAFT`/`STATUS_PUBLISHED`/`STATUS_ARCHIVED`), while `BlogCategory::$status` is a **string** enum (`active`/`inactive`). Use the post constants when querying posts (`where('status', BlogPost::STATUS_PUBLISHED)`, not `where('status', 'published')`).
+- **Categories use `title`, not `name`.** The original `name` column was replaced by a translatable `title` (plus `menu_title`). Read category labels via `$category->title`.
+- **Pin the right version.** `^1.0` currently resolves to the latest `1.x` tag — make sure that tag actually includes the features you rely on (authors, redirects, canonicals, multilingual, TOC, category hierarchy). When in doubt, check `git tag` / the release notes before upgrading.
 
 ## Versioning
 

@@ -8,6 +8,7 @@ use BlogCms\Models\BlogCategory;
 use BlogCms\Services\AnalyticsService;
 use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BlogCategoryController extends Controller
 {
@@ -42,12 +43,16 @@ class BlogCategoryController extends Controller
 
     public function create(Request $request)
     {
-        return view('blog::admin.categories.create', ['locale' => $this->editingLocale($request)]);
+        return view('blog::admin.categories.create', [
+            'locale' => $this->editingLocale($request),
+            'parentOptions' => BlogCategory::parentOptionsFor(),
+        ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'parent_id' => ['nullable', Rule::exists('blog_categories', 'id')],
             'title' => 'required|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'meta_title' => 'nullable|string|max:255',
@@ -63,7 +68,11 @@ class BlogCategoryController extends Controller
         $locale = $this->editingLocale($request);
 
         $category = new BlogCategory(array_merge(
-            ['status' => $validated['status'], 'sort_order' => $validated['sort_order'] ?? 0],
+            [
+                'parent_id' => $validated['parent_id'] ?? null,
+                'status' => $validated['status'],
+                'sort_order' => $validated['sort_order'] ?? 0,
+            ],
             $this->canonicalColumns($request),
         ));
         $this->fillTranslations($category, $request, $locale);
@@ -85,12 +94,18 @@ class BlogCategoryController extends Controller
         return view('blog::admin.categories.edit', [
             'category' => $category,
             'locale' => $this->editingLocale($request),
+            'parentOptions' => BlogCategory::parentOptionsFor($category),
         ]);
     }
 
     public function update(Request $request, BlogCategory $category)
     {
         $validated = $request->validate([
+            'parent_id' => [
+                'nullable',
+                Rule::exists('blog_categories', 'id'),
+                Rule::notIn($category->subtreeIds()), // no self/descendant → no cycles
+            ],
             'title' => 'required|string|max:255',
             'menu_title' => 'nullable|string|max:255',
             'meta_title' => 'nullable|string|max:255',
@@ -101,12 +116,18 @@ class BlogCategoryController extends Controller
             'canonical' => 'nullable|string',
             'cover_desktop' => 'nullable|image|max:5120',
             'cover_mobile' => 'nullable|image|max:5120',
+        ], [
+            'parent_id.not_in' => 'A category cannot be nested under itself or one of its own subcategories.',
         ]);
 
         $locale = $this->editingLocale($request);
 
         $category->fill(array_merge(
-            ['status' => $validated['status'], 'sort_order' => $validated['sort_order'] ?? $category->sort_order],
+            [
+                'parent_id' => $validated['parent_id'] ?? null,
+                'status' => $validated['status'],
+                'sort_order' => $validated['sort_order'] ?? $category->sort_order,
+            ],
             $this->canonicalColumns($request),
         ));
         $this->fillTranslations($category, $request, $locale);

@@ -73,6 +73,13 @@
                     @enderror
                 </div>
 
+                {{-- Parent Category --}}
+                @include('blog::admin.categories.partials.parent-select', [
+                    'parentOptions' => $parentOptions,
+                    'selected' => old('parent_id', $category->parent_id),
+                    'locale' => $locale,
+                ])
+
                 {{-- Canonical --}}
                 @include('blog::admin.partials.page-select', [
                     'name' => 'canonical',

@@ -6,6 +6,7 @@ use BlogCms\Http\Controllers\Api\Concerns\HandlesApiLocale;
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\BlogCategory;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BlogCategoryController extends Controller
 {
@@ -27,6 +28,7 @@ class BlogCategoryController extends Controller
         app()->setLocale($locale); // scalar fields land under the requested locale
 
         $validated = $request->validate([
+            'parent_id' => ['nullable', Rule::exists('blog_categories', 'id')],
             'title' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
@@ -47,6 +49,11 @@ class BlogCategoryController extends Controller
         app()->setLocale($locale); // merge only the requested locale
 
         $validated = $request->validate([
+            'parent_id' => [
+                'nullable',
+                Rule::exists('blog_categories', 'id'),
+                Rule::notIn($category->subtreeIds()), // no self/descendant → no cycles
+            ],
             'title' => 'sometimes|required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'menu_title' => 'nullable|string|max:255',
