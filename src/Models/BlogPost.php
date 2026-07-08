@@ -150,20 +150,26 @@ class BlogPost extends Model implements HasMedia
 
     public function registerMediaConversions(?Media $media = null): void
     {
+        $contentCollection = config('blog-cms.media.content_collection', 'content');
+        $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
+
+        // thumb/preview are only for cover + gallery imagery — NOT content images
+        // (which use the width buckets below), so we don't generate unused files
+        // for every content image and its WebP/AVIF variants.
         $this->addMediaConversion('thumb')
             ->width(400)
             ->height(300)
-            ->sharpen(10);
+            ->sharpen(10)
+            ->performOnCollections('cover_desktop', 'cover_mobile', 'gallery');
 
         $this->addMediaConversion('preview')
             ->width(800)
-            ->height(600);
+            ->height(600)
+            ->performOnCollections('cover_desktop', 'cover_mobile', 'gallery');
 
         // Responsive srcset buckets for inline content images. Width-only, so the
         // natural aspect ratio is preserved; generated synchronously (nonQueued)
         // so the URLs are valid the moment the ingestor writes the srcset.
-        $contentCollection = config('blog-cms.media.content_collection', 'content');
-        $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
 
         // Width buckets are generated for the original content collection and for
         // the ShortPixel-converted WebP/AVIF variant collections (content-webp,

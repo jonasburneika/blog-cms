@@ -101,15 +101,23 @@ class OptimizePostImages implements ShouldQueue
     protected function applyResult(Model $post, mixed $media, array $item, ShortPixelOptimizer $optimizer, string $collection): void
     {
         try {
-            // Optimized original bytes → overwrite in place (URL unchanged).
+            // Track the effective original size so we never keep a file that
+            // isn't actually smaller.
+            $originalSize = (int) $media->size;
+
+            // Optimized original bytes → overwrite in place (URL unchanged), only
+            // when ShortPixel actually made it smaller.
             $url = $optimizer->optimizedUrl($item);
             $bytes = $url ? $optimizer->download($url) : null;
-            if ($bytes !== null && $bytes !== '') {
+            if ($bytes !== null && $bytes !== '' && ($originalSize <= 0 || strlen($bytes) < $originalSize)) {
                 Storage::disk($media->disk)->put($media->getPathRelativeToRoot(), $bytes);
                 $media->size = strlen($bytes);
+                $originalSize = strlen($bytes);
             }
 
-            // ShortPixel-converted WebP/AVIF → store as sibling variant media.
+            // ShortPixel-converted WebP/AVIF → store as sibling variant media,
+            // but only when the variant is smaller than the original (else a
+            // <picture> would serve a *bigger* modern format).
             foreach ($optimizer->formats() as $format) {
                 if ($media->getCustomProperty("variant_{$format}_id")) {
                     continue; // already stored
@@ -119,6 +127,9 @@ class OptimizePostImages implements ShouldQueue
                 $formatBytes = $formatUrl ? $optimizer->download($formatUrl) : null;
                 if ($formatBytes === null || $formatBytes === '') {
                     continue;
+                }
+                if ($originalSize > 0 && strlen($formatBytes) >= $originalSize) {
+                    continue; // not smaller — skip, keep only the original
                 }
 
                 $base = pathinfo((string) $media->file_name, PATHINFO_FILENAME);
