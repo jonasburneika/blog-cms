@@ -346,6 +346,10 @@ the settings table (`site_name`, `homepage_meta_*`, `site_description`) and
 The robots value and pagination canonical come from `BlogCms\Support\SeoMeta`, the same source the
 response headers use — so the header and the meta tag never disagree.
 
+> **"Robots meta tag missing" in an audit?** The `X-Robots-Tag` **header** is always sent, but the
+> `<meta name="robots">` **tag** only appears if you render `<x-blog::seo-meta />` in your `<head>`.
+> Add it to your layout (see the homepage example above) and the tag shows `index, follow`.
+
 ### Robots & canonical response headers
 
 `AddRobotsHeader` (on the whole `web` group) sets, on every response:
@@ -354,6 +358,29 @@ response headers use — so the header and the meta tag never disagree.
   `noindex, nofollow` for `admin/*`, `login`, `register`.
 - `Link: <primary>; rel="canonical"` for **paginated** URLs (`?page=N`) → the primary page is the
   same URL with `page` stripped (other params kept), so page 2..N don't compete with page 1.
+
+### robots.txt
+
+The package serves `GET /robots.txt` (config `blog-cms.robots_txt`, on by default) — it disallows
+`admin`/`login`/`register`/guest-submit paths and points at your sitemap. **A static
+`public/robots.txt` is served by the web server first and wins**, so delete it (Laravel ships a
+default one) to use the generated version, or set `robots_txt.enabled = false` and keep your own.
+
+## Social share buttons
+
+`<x-blog::share-buttons :post="$post" />` renders post share buttons that **append UTM parameters** to
+the shared URL, so social traffic is attributed in analytics. Networks (config
+`blog-cms.sharing.networks`, any of `twitter`, `facebook`, `linkedin`, `whatsapp`, `reddit`, `email`,
+`copy`) each set `utm_source=<network>` + `utm_medium` (`social`, or `referral` for copy / `email` for
+email) + `utm_campaign` (config `sharing.campaign`, overridable per widget). Example on a post:
+
+```blade
+<x-blog::share-buttons :post="$post" campaign="blog-post"
+                       :networks="['twitter','facebook','linkedin','copy']" />
+```
+
+Theme-neutral — style the emitted `.blog-share*` classes. The small vanilla-JS handler is inlined
+once per page (event-delegated), strips any existing `utm_*` before tagging, and needs no build step.
 
 ## Security headers
 
@@ -454,8 +481,18 @@ or an **external URL**, and has a **target** (`_self`/`_blank`/`_parent`/`_top`)
 
 ## Front-end example: homepage + footer
 
-The package is headless — you own the theme — but the content-block and link-list components drop
-straight into your Blade. A homepage with editor copy **before and after** the featured posts:
+The package is headless — you own the theme — but its components drop straight into your Blade. Put
+the SEO head tags in your layout so every page gets `<meta name="robots" content="index, follow">`,
+canonical and Open Graph/Twitter:
+
+```blade
+{{-- resources/views/layouts/app.blade.php (your app) — in <head> --}}
+<x-blog::seo-meta
+    :title="$metaTitle ?? null"
+    :description="$metaDescription ?? null" />
+```
+
+A homepage with editor copy **before and after** the featured posts:
 
 ```blade
 {{-- resources/views/home.blade.php (your app) --}}
@@ -474,6 +511,12 @@ straight into your Blade. A homepage with editor copy **before and after** the f
 
     <x-blog::content-block key="homepage_after_featured" class="prose mx-auto my-8" />
 @endsection
+```
+
+On a **post page**, add the share buttons (they resolve the post's canonical URL + title):
+
+```blade
+<x-blog::share-buttons :post="$post" campaign="blog-post" class="mt-12 flex flex-wrap gap-3" />
 ```
 
 A footer that renders the managed **footer** link list (create a list with key `footer` in the admin,

@@ -1,8 +1,14 @@
 <?php
 
 use BlogCms\Http\Controllers\GuestBlogController;
+use BlogCms\Http\Controllers\RobotsController;
 use BlogCms\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
+
+// robots.txt (a static public/robots.txt, if present, is served first and wins).
+if (config('blog-cms.robots_txt.enabled')) {
+    Route::get('robots.txt', RobotsController::class);
+}
 
 // Public search page: GET /search?q=… (name blog.search). Disabled when
 // config('blog-cms.search.route') is null — see BlogCmsServiceProvider.

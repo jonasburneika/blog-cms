@@ -248,4 +248,44 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Social sharing (<x-blog::share-buttons>)
+    |--------------------------------------------------------------------------
+    | Post share buttons that append UTM parameters to the shared URL. Pick the
+    | networks (any of: twitter, facebook, linkedin, whatsapp, reddit, email,
+    | copy) and the campaign tag. Buttons are theme-neutral (style the emitted
+    | .blog-share* classes).
+    */
+    'sharing' => [
+        'networks' => ['twitter', 'facebook', 'copy'],
+        'campaign' => 'share',
+        'label' => 'Share:',
+        'labels' => [
+            'twitter' => 'X / Twitter',
+            'facebook' => 'Facebook',
+            'linkedin' => 'LinkedIn',
+            'whatsapp' => 'WhatsApp',
+            'reddit' => 'Reddit',
+            'email' => 'Email',
+            'copy' => 'Copy link',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | robots.txt
+    |--------------------------------------------------------------------------
+    | When enabled the package serves GET /robots.txt (unless the app ships a
+    | static public/robots.txt, which always wins). Disallows admin/auth/guest
+    | submit paths and points at the sitemap. Set extra lines or a full custom
+    | body as needed.
+    */
+    'robots_txt' => [
+        'enabled' => true,
+        'sitemap_url' => null, // null = url('/sitemap.xml')
+        'disallow' => ['/admin', '/login', '/register', '/guest-blog/submit'],
+        'extra' => [],         // additional raw lines appended to the body
+    ],
+
 ];
