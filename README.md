@@ -425,6 +425,19 @@ created, attributed to a guest author → editor reviews & publishes it in the n
 > matches any other account (e.g. a staff/admin), the draft is attributed to the default author, never
 > to that account — so a guest post can't borrow a credentialed author's identity or E-E-A-T.
 
+## Content blocks (homepage copy & co.)
+
+Reusable **rich-text (WYSIWYG) blocks** the theme renders by key — e.g. copy shown **before and
+after the homepage featured posts**. Manage them under **Content Blocks** in the admin; the content
+editor is the same Jodit WYSIWYG as posts. Title + content are **translatable**.
+
+- Render in your theme: `<x-blog::content-block key="homepage_before_featured" />` … featured posts …
+  `<x-blog::content-block key="homepage_after_featured" />` (both keys are suggested in the admin;
+  use any keys you like). Or fetch with `BlogContentBlock::forKey($key)`.
+- Renders nothing when the block is missing, inactive, or empty. Content is admin-authored (trusted)
+  and output as raw HTML. Table: `blog_content_blocks` (`key`, `name`, translatable `title`/`content`,
+  `is_active`, `sort_order`).
+
 ## Link lists (footer & co.)
 
 Manage named lists of links (e.g. a **footer**) under **Link Lists** in the admin. Each link has a

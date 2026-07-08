@@ -8,6 +8,7 @@ use BlogCms\Http\Controllers\Admin\BlogPostFaqController;
 use BlogCms\Http\Controllers\Admin\BlogPostTopicController;
 use BlogCms\Http\Controllers\Admin\BlogAuthorProfileController;
 use BlogCms\Http\Controllers\Admin\BlogRedirectController;
+use BlogCms\Http\Controllers\Admin\BlogContentBlockController;
 use BlogCms\Http\Controllers\Admin\BlogLinkController;
 use BlogCms\Http\Controllers\Admin\BlogLinkListController;
 use BlogCms\Http\Controllers\Admin\BlogPostHookController;
@@ -25,6 +26,9 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::resource('posts', BlogPostController::class);
     Route::resource('redirects', BlogRedirectController::class)->except(['show']);
     Route::resource('authors', BlogAuthorProfileController::class)->except(['show'])->parameters(['authors' => 'author']);
+
+    // Reusable WYSIWYG content blocks (e.g. homepage before/after featured).
+    Route::resource('content-blocks', BlogContentBlockController::class)->except(['show'])->parameters(['content-blocks' => 'contentBlock']);
 
     // Link lists (e.g. footer) + their links.
     Route::resource('link-lists', BlogLinkListController::class)->except(['show'])->parameters(['link-lists' => 'linkList']);
