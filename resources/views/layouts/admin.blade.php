@@ -116,6 +116,16 @@
                         Redirects
                     </a>
 
+                    {{-- Pages --}}
+                    <a href="{{ route('admin.pages.index') ?? '#' }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                              {{ request()->routeIs('admin.pages.*') ? 'bg-warm-400/20 text-earth-700 dark:text-warm-300 dark:bg-warm-500/15' : 'text-sand-700 dark:text-sand-300 hover:bg-sand-200 dark:hover:bg-neutral-700 hover:text-warm-800 dark:hover:text-warm-200' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Pages
+                    </a>
+
                     {{-- Content Blocks --}}
                     <a href="{{ route('admin.content-blocks.index') ?? '#' }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200

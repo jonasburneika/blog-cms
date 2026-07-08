@@ -317,4 +317,16 @@ return [
         'description' => null, // null → site_description setting
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Simple pages
+    |--------------------------------------------------------------------------
+    | Standalone content pages (Terms, Privacy, Cookie Policy, …). The app owns
+    | the public route; `url_prefix` only shapes BlogPage::pagePath()/pageUrl()
+    | (e.g. '' → /{slug}, 'page' → /page/{slug}).
+    */
+    'pages' => [
+        'url_prefix' => '',
+    ],
+
 ];

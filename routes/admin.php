@@ -1,6 +1,7 @@
 <?php
 
 use BlogCms\Http\Controllers\Admin\BlogCategoryController;
+use BlogCms\Http\Controllers\Admin\BlogPageController;
 use BlogCms\Http\Controllers\Admin\BlogPostBasedOnController;
 use BlogCms\Http\Controllers\Admin\BlogPostCitationController;
 use BlogCms\Http\Controllers\Admin\BlogPostController;
@@ -26,6 +27,9 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::resource('posts', BlogPostController::class);
     Route::resource('redirects', BlogRedirectController::class)->except(['show']);
     Route::resource('authors', BlogAuthorProfileController::class)->except(['show'])->parameters(['authors' => 'author']);
+
+    // Simple pages (Terms, Privacy, …).
+    Route::resource('pages', BlogPageController::class)->except(['show']);
 
     // Reusable WYSIWYG content blocks (e.g. homepage before/after featured).
     Route::resource('content-blocks', BlogContentBlockController::class)->except(['show'])->parameters(['content-blocks' => 'contentBlock']);

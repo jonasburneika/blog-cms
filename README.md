@@ -494,6 +494,40 @@ editor is the same Jodit WYSIWYG as posts. Title + content are **translatable**.
   and output as raw HTML. Table: `blog_content_blocks` (`key`, `name`, translatable `title`/`content`,
   `is_active`, `sort_order`).
 
+## Simple pages (Terms, Privacy, …)
+
+Standalone content pages authored in the admin (**Pages**) with the Jodit WYSIWYG — Terms &
+Conditions, Privacy Policy, Cookie Policy, About, etc. Title / slug / content / meta are
+**translatable**; the slug is auto-generated per locale from the title (override it if you like).
+Each page has a **draft/published** status and an `is_indexable` flag.
+
+Headless — **the app owns the route and template**. Resolve + render a page:
+
+```php
+// routes/web.php (your app)
+Route::get('/{slug}', function (string $slug) {
+    $page = \BlogCms\Models\BlogPage::findPublished($slug) ?? abort(404);
+    return view('page', compact('page'));
+})->where('slug', '[a-z0-9-]+');
+```
+
+```blade
+{{-- resources/views/page.blade.php (your app) --}}
+@extends('layouts.app')
+@section('content')
+    <article class="prose mx-auto">
+        <h1>{{ $page->title }}</h1>
+        {!! $page->content !!}   {{-- trusted admin HTML --}}
+    </article>
+@endsection
+```
+
+`BlogPage::findPublished($slug, $locale)` looks up a published page by slug in the (current) locale.
+`pagePath()`/`pageUrl()` build the URL from `config('blog-cms.pages.url_prefix')` (default `''` →
+`/{slug}`; set e.g. `page` → `/page/{slug}`). Pass the page's `meta_title`/`meta_description` to
+`<x-blog::seo-meta>`, and honour `is_indexable` (render `<meta name="robots" content="noindex">` when
+false). Link them from the footer with a **link list** external URL pointing at `$page->pageUrl()`.
+
 ## Link lists (footer & co.)
 
 Manage named lists of links (e.g. a **footer**) under **Link Lists** in the admin. Each link has a
