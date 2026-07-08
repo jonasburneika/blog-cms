@@ -41,6 +41,11 @@ class ShortPixelOptimizer
         return (string) (Setting::get('shortpixel_compression') ?: config('blog-cms.media.shortpixel.compression', 'lossy'));
     }
 
+    public function keepExif(): bool
+    {
+        return (bool) Setting::get('shortpixel_keep_exif', config('blog-cms.media.shortpixel.keep_exif', false));
+    }
+
     /**
      * Ask ShortPixel to optimize a public image URL. Returns the first result
      * object from the reducer (with a `Status.Code`), or null on transport error.
@@ -60,8 +65,10 @@ class ShortPixelOptimizer
                     'plugin_version' => 'bcms',   // client id (max 5 chars)
                     'lossy' => $this->compressionCode(),
                     'wait' => max(0, min(30, $wait)),
-                    'convertto' => '',   // keep the original format (in-place replace)
+                    'convertto' => '',   // keep the original format (in-place replace);
+                                         // WebP/AVIF are produced as MediaLibrary conversions
                     'resize' => 0,       // sizing is handled by our srcset conversions
+                    'keep_exif' => $this->keepExif() ? 1 : 0,
                     'refresh' => 0,
                     'urllist' => [$publicUrl],
                 ]);

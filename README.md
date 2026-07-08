@@ -251,13 +251,23 @@ Two mechanisms:
   > Existing posts from before this feature won't have the `content-{w}` conversions — run
   > `php artisan media-library:regenerate` once to backfill them.
 
+- **WebP / AVIF (`<picture>`):** enable **WebP** and/or **AVIF** in **Settings → Image Optimization**
+  (or `media.content_image.formats`). Each stored content image is then wrapped in a `<picture>` with
+  a `<source type="image/avif">` / `<source type="image/webp">` (each a width-bucket `srcset`) and the
+  original `<img>` as the fallback, so modern browsers get the smaller format and everything else
+  still works. The modern formats are MediaLibrary conversions (`content-{w}-{format}`) derived from
+  the ShortPixel-optimized original. **AVIF requires an imagick/GD build with AVIF support** — enabling
+  a format the driver can't produce will fail those conversions. After enabling, run
+  `php artisan media-library:regenerate` to backfill existing images.
+
 - **ShortPixel optimization (queued):** enable it and set the **API key in the admin UI**
   (**Settings → Image Optimization**; stored encrypted in the settings table — no `.env` needed, though
   `media.shortpixel.*` env fallbacks exist for headless setups). On save, each un-optimized content
   image is queued (`OptimizeMediaWithShortPixel`) to the ShortPixel reducer API. The job sends the
   image's public URL, writes the optimized bytes back **in place** (same format), marks the media
   (`shortpixel_optimized` custom property, so it's never re-optimized), and regenerates the `srcset`
-  buckets from the optimized original. Compression is `lossy`/`glossy`/`lossless`. ShortPixel processes
+  buckets from the optimized original. Compression is `lossy`/`glossy`/`lossless`, with an optional
+  **Keep EXIF** toggle (all in the same **Settings → Image Optimization** tab). ShortPixel processes
   asynchronously — a "pending" result re-queues with a delay up to `max_poll_attempts`. **Requires a
   running queue worker**, and content media must be **publicly reachable** by ShortPixel's servers.
   Best-effort: every failure is logged and never disrupts saving.

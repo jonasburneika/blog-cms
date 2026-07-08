@@ -169,6 +169,14 @@ return [
             'max_width' => 1600,
             'srcset_widths' => [480, 768, 1024, 1600],
             'sizes' => '(max-width: 768px) 100vw, 768px',
+
+            // Modern output formats served via <picture><source> (original stays
+            // the <img> fallback). Generated as MediaLibrary conversions from the
+            // (ShortPixel-optimized) original. Admin "Image Optimization" tab
+            // overrides this. AVIF needs an imagick/gd build with AVIF support —
+            // enabling a format the driver can't produce will fail those
+            // conversions. Supported: 'webp', 'avif'.
+            'formats' => [],
         ],
 
         // ShortPixel image optimization (https://shortpixel.com). When enabled,
@@ -185,6 +193,7 @@ return [
             'enabled' => (bool) env('BLOG_CMS_SHORTPIXEL_ENABLED', false),
             'api_key' => env('SHORTPIXEL_API_KEY'),
             'compression' => env('BLOG_CMS_SHORTPIXEL_COMPRESSION', 'lossy'), // lossy|glossy|lossless
+            'keep_exif' => (bool) env('BLOG_CMS_SHORTPIXEL_KEEP_EXIF', false),
             'queue' => env('BLOG_CMS_SHORTPIXEL_QUEUE'),   // null = default queue
             'wait' => 30,          // seconds the API waits before returning "pending" (0-30)
             'max_poll_attempts' => 6,

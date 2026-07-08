@@ -2,6 +2,7 @@
 
 namespace BlogCms\Services;
 
+use BlogCms\Support\ImageFormats;
 use BlogCms\Support\ImageUrlGuard;
 use DOMDocument;
 use DOMElement;
@@ -71,9 +72,15 @@ class ContentImageIngestor
             }
 
             // 2) For any stored content image (just-ingested or already-local),
-            //    add responsive srcset + intrinsic width/height.
-            if ($media && $this->applyResponsive($img, $media)) {
-                $changed = true;
+            //    add responsive srcset + intrinsic width/height, then wrap in a
+            //    <picture> with WebP/AVIF <source>s when those formats are enabled.
+            if ($media) {
+                if ($this->applyResponsive($img, $media)) {
+                    $changed = true;
+                }
+                if ($this->wrapInPicture($doc, $img, $media)) {
+                    $changed = true;
+                }
             }
 
             // 3) Stamp lazy-loading on EVERY image — ingested, already-local, or a
@@ -294,6 +301,72 @@ class ContentImageIngestor
         }
 
         return $changed;
+    }
+
+    /**
+     * Wrap a stored content <img> in a <picture> with a <source> per enabled
+     * modern format (AVIF/WebP, preference order), each a width-bucket srcset.
+     * The original <img> stays as the last child (fallback). Idempotent: skipped
+     * when formats are off or the image is already inside a <picture>.
+     */
+    protected function wrapInPicture(DOMDocument $doc, DOMElement $img, mixed $media): bool
+    {
+        $formats = ImageFormats::enabled();
+        if (! $formats) {
+            return false;
+        }
+
+        $parent = $img->parentNode;
+        if (! $parent || strtolower($parent->nodeName) === 'picture') {
+            return false; // no parent to replace within, or already wrapped
+        }
+
+        try {
+            $size = @getimagesize($media->getPath());
+        } catch (Throwable) {
+            $size = false;
+        }
+        if (! $size || (int) $size[0] < 1) {
+            return false;
+        }
+
+        $originalWidth = (int) $size[0];
+        $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
+        $sizes = (string) config('blog-cms.media.content_image.sizes', '100vw');
+
+        $sources = [];
+        foreach ($formats as $format) {
+            $entries = [];
+            foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
+                $width = (int) $width;
+                if ($width < 1 || $width > $maxWidth || $width > $originalWidth) {
+                    continue;
+                }
+                $entries[] = $media->getUrl('content-'.$width.'-'.$format).' '.$width.'w';
+            }
+            if (! $entries) {
+                continue;
+            }
+
+            $source = $doc->createElement('source');
+            $source->setAttribute('type', 'image/'.$format);
+            $source->setAttribute('srcset', implode(', ', $entries));
+            $source->setAttribute('sizes', $sizes);
+            $sources[] = $source;
+        }
+
+        if (! $sources) {
+            return false;
+        }
+
+        $picture = $doc->createElement('picture');
+        $parent->replaceChild($picture, $img);
+        foreach ($sources as $source) {
+            $picture->appendChild($source);
+        }
+        $picture->appendChild($img); // fallback comes last
+
+        return true;
     }
 
     /**

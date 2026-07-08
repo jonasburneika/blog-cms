@@ -165,16 +165,28 @@ class BlogPost extends Model implements HasMedia
         $contentCollection = config('blog-cms.media.content_collection', 'content');
         $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
 
+        $formats = \BlogCms\Support\ImageFormats::enabled();
+
         foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
             $width = (int) $width;
             if ($width < 1 || $width > $maxWidth) {
                 continue;
             }
 
+            // Original-format bucket (keeps the source's format).
             $this->addMediaConversion('content-'.$width)
                 ->width($width)
                 ->performOnCollections($contentCollection)
                 ->nonQueued();
+
+            // Modern-format buckets (WebP/AVIF), served via <picture><source>.
+            foreach ($formats as $format) {
+                $this->addMediaConversion('content-'.$width.'-'.$format)
+                    ->width($width)
+                    ->format($format)
+                    ->performOnCollections($contentCollection)
+                    ->nonQueued();
+            }
         }
     }
 }

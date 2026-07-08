@@ -40,6 +40,8 @@ class SettingController extends Controller
                 'shortpixel_enabled' => Setting::get('shortpixel_enabled', false),
                 'shortpixel_api_key' => Setting::get('shortpixel_api_key') ? '********' : '',
                 'shortpixel_compression' => Setting::get('shortpixel_compression', 'lossy'),
+                'shortpixel_keep_exif' => Setting::get('shortpixel_keep_exif', false),
+                'image_formats' => \BlogCms\Support\ImageFormats::enabled(),
             ],
             'languages' => [
                 'default_locale' => LocaleManager::default(),
@@ -142,10 +144,15 @@ class SettingController extends Controller
             'shortpixel_api_key' => 'nullable|string|max:255',
             'shortpixel_enabled' => 'nullable|boolean',
             'shortpixel_compression' => 'nullable|in:lossy,glossy,lossless',
+            'shortpixel_keep_exif' => 'nullable|boolean',
+            'image_formats' => 'nullable|array',
+            'image_formats.*' => 'in:webp,avif',
         ]);
 
         Setting::set('shortpixel_enabled', $request->boolean('shortpixel_enabled'), 'shortpixel', 'boolean');
         Setting::set('shortpixel_compression', $request->shortpixel_compression ?: 'lossy', 'shortpixel');
+        Setting::set('shortpixel_keep_exif', $request->boolean('shortpixel_keep_exif'), 'shortpixel', 'boolean');
+        Setting::set('image_formats', array_values($request->input('image_formats', [])), 'shortpixel', 'json');
 
         // Only overwrite the stored key when a real (non-masked) value is submitted.
         if ($request->shortpixel_api_key && $request->shortpixel_api_key !== '********') {
@@ -153,7 +160,7 @@ class SettingController extends Controller
         }
 
         return redirect()->route('admin.settings.index', ['tab' => 'shortpixel'])
-            ->with('success', 'ShortPixel settings updated.');
+            ->with('success', 'Image optimization settings updated.');
     }
 
     public function generateApiKey()

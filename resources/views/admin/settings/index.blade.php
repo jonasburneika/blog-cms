@@ -716,7 +716,7 @@
                             </div>
 
                             {{-- Compression --}}
-                            <div class="mb-6">
+                            <div class="mb-5">
                                 <label for="shortpixel_compression" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Compression</label>
                                 <select name="shortpixel_compression" id="shortpixel_compression"
                                         class="w-full bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-4 py-2.5 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
@@ -726,8 +726,37 @@
                                 </select>
                             </div>
 
+                            {{-- Modern output formats --}}
+                            @php($enabledFormats = old('image_formats', $settings['shortpixel']['image_formats']))
+                            <div class="mb-5">
+                                <span class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Modern formats</span>
+                                <div class="flex flex-wrap gap-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" name="image_formats[]" value="webp"
+                                               {{ in_array('webp', (array) $enabledFormats, true) ? 'checked' : '' }}
+                                               class="w-4 h-4 rounded border-warm-300 dark:border-neutral-600 text-amber-600 focus:ring-amber-500">
+                                        <span class="text-sm text-stone-700 dark:text-stone-300">WebP</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" name="image_formats[]" value="avif"
+                                               {{ in_array('avif', (array) $enabledFormats, true) ? 'checked' : '' }}
+                                               class="w-4 h-4 rounded border-warm-300 dark:border-neutral-600 text-amber-600 focus:ring-amber-500">
+                                        <span class="text-sm text-stone-700 dark:text-stone-300">AVIF</span>
+                                    </label>
+                                </div>
+                                <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Served via <code>&lt;picture&gt;</code> with the original as fallback. <strong>AVIF</strong> requires an imagick/GD build with AVIF support.</p>
+                            </div>
+
+                            {{-- Keep EXIF --}}
+                            <label class="flex items-center gap-3 mb-6 cursor-pointer">
+                                <input type="checkbox" name="shortpixel_keep_exif" value="1"
+                                       {{ old('shortpixel_keep_exif', $settings['shortpixel']['shortpixel_keep_exif']) ? 'checked' : '' }}
+                                       class="w-4 h-4 rounded border-warm-300 dark:border-neutral-600 text-amber-600 focus:ring-amber-500">
+                                <span class="text-sm font-medium text-stone-700 dark:text-stone-300">Keep EXIF metadata</span>
+                            </label>
+
                             <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
-                                Save ShortPixel Settings
+                                Save Image Optimization Settings
                             </button>
                         </form>
                     </div>
