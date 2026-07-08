@@ -57,6 +57,7 @@ class ShortPixelOptimizer
                 ->asJson()
                 ->post(self::ENDPOINT, [
                     'key' => $this->apiKey(),
+                    'plugin_version' => 'bcms',   // client id (max 5 chars)
                     'lossy' => $this->compressionCode(),
                     'wait' => max(0, min(30, $wait)),
                     'convertto' => '',   // keep the original format (in-place replace)
