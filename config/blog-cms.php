@@ -157,6 +157,39 @@ return [
         'allowed_image_hosts' => [],
         'max_image_bytes' => 15 * 1024 * 1024,
         'fetch_timeout' => 15,
+
+        // Responsive content images. On save, each stored content <img> gets a
+        // srcset built from these width buckets (only those <= the original's
+        // width, never upscaled) + a sizes attribute, so browsers download a
+        // right-sized image instead of the full upload. src stays the original
+        // (fallback). width/height come from the admin's set size when present,
+        // else the natural ratio capped at max_width. Buckets are generated as
+        // MediaLibrary conversions (see BlogPost::registerMediaConversions).
+        'content_image' => [
+            'max_width' => 1600,
+            'srcset_widths' => [480, 768, 1024, 1600],
+            'sizes' => '(max-width: 768px) 100vw, 768px',
+        ],
+
+        // ShortPixel image optimization (https://shortpixel.com). When enabled,
+        // saving a post queues a job per stored content image that sends its
+        // public URL to the ShortPixel reducer API, then writes the optimized
+        // bytes back (same format, in place) and regenerates the srcset
+        // conversions. Best-effort: needs a queue worker, an API key, and content
+        // media publicly reachable by ShortPixel's servers.
+        //
+        // The API key, enable toggle and compression are managed from the admin
+        // Settings → Image Optimization tab (stored in the settings table, key
+        // encrypted). The env values below are only fallbacks for headless setups.
+        'shortpixel' => [
+            'enabled' => (bool) env('BLOG_CMS_SHORTPIXEL_ENABLED', false),
+            'api_key' => env('SHORTPIXEL_API_KEY'),
+            'compression' => env('BLOG_CMS_SHORTPIXEL_COMPRESSION', 'lossy'), // lossy|glossy|lossless
+            'queue' => env('BLOG_CMS_SHORTPIXEL_QUEUE'),   // null = default queue
+            'wait' => 30,          // seconds the API waits before returning "pending" (0-30)
+            'max_poll_attempts' => 6,
+            'poll_delay' => 20,    // seconds between re-checks while pending
+        ],
     ],
 
 ];

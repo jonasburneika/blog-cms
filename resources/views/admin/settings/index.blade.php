@@ -116,6 +116,16 @@
                     </svg>
                     API
                 </button>
+                <button type="button" @click="switchTab('shortpixel')"
+                        :class="activeTab === 'shortpixel'
+                            ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+                            : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 hover:border-stone-300 dark:hover:border-neutral-600'"
+                        class="inline-flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 rounded-t-lg transition">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Image Optimization
+                </button>
             </nav>
         </div>
 
@@ -664,6 +674,78 @@
                                 <li><code class="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">CRUD</code> /api/posts/{id}/howto-steps</li>
                                 <li><code class="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">POST</code> /api/posts/{id}/cover</li>
                                 <li><code class="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">POST</code> /api/media/upload</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ============================================================ --}}
+        {{-- Image Optimization (ShortPixel) Tab --}}
+        {{-- ============================================================ --}}
+        <div x-show="activeTab === 'shortpixel'" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {{-- Main Panel (2/3) --}}
+                <div class="lg:col-span-2">
+                    <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
+                        <h2 class="text-lg font-semibold text-warm-900 dark:text-warm-100 mb-6">ShortPixel Image Optimization</h2>
+
+                        <form method="POST" action="{{ route('admin.settings.update.shortpixel') }}">
+                            @csrf
+                            @method('PUT')
+
+                            {{-- Enabled --}}
+                            <label class="flex items-center gap-3 mb-5 cursor-pointer">
+                                <input type="checkbox" name="shortpixel_enabled" value="1"
+                                       {{ old('shortpixel_enabled', $settings['shortpixel']['shortpixel_enabled']) ? 'checked' : '' }}
+                                       class="w-4 h-4 rounded border-warm-300 dark:border-neutral-600 text-amber-600 focus:ring-amber-500">
+                                <span class="text-sm font-medium text-stone-700 dark:text-stone-300">Enable ShortPixel optimization on save</span>
+                            </label>
+
+                            {{-- API Key --}}
+                            <div class="mb-5">
+                                <label for="shortpixel_api_key" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">API Key</label>
+                                <input type="password" name="shortpixel_api_key" id="shortpixel_api_key" autocomplete="off"
+                                       value="{{ old('shortpixel_api_key', $settings['shortpixel']['shortpixel_api_key']) }}"
+                                       placeholder="Your ShortPixel API key"
+                                       class="w-full bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-4 py-2.5 text-sm text-warm-900 dark:text-warm-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+                                <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Stored encrypted. Leave the masked value untouched to keep the current key. Get a key at <span class="font-mono">shortpixel.com</span>.</p>
+                                @error('shortpixel_api_key')<p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+                            </div>
+
+                            {{-- Compression --}}
+                            <div class="mb-6">
+                                <label for="shortpixel_compression" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Compression</label>
+                                <select name="shortpixel_compression" id="shortpixel_compression"
+                                        class="w-full bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-4 py-2.5 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+                                    @foreach(['lossy' => 'Lossy (smallest)', 'glossy' => 'Glossy (balanced)', 'lossless' => 'Lossless (highest quality)'] as $value => $label)
+                                        <option value="{{ $value }}" {{ old('shortpixel_compression', $settings['shortpixel']['shortpixel_compression']) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
+                                Save ShortPixel Settings
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {{-- Info Panel (1/3) --}}
+                <div class="lg:col-span-1">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-300">How it works</h3>
+                        </div>
+                        <div class="space-y-3 text-sm text-blue-700 dark:text-blue-300">
+                            <p>When enabled, saving a post queues each content image for optimization via the ShortPixel API, then writes the optimized image back in place.</p>
+                            <p class="font-medium text-blue-800 dark:text-blue-200">Requirements:</p>
+                            <ul class="space-y-1.5 text-xs list-disc list-inside">
+                                <li>A running queue worker (<code class="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/40 rounded">php artisan queue:work</code>).</li>
+                                <li>Content images must be publicly reachable by ShortPixel.</li>
                             </ul>
                         </div>
                     </div>

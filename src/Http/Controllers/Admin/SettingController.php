@@ -36,6 +36,11 @@ class SettingController extends Controller
             'api' => [
                 'api_key' => Setting::get('api_key', ''),
             ],
+            'shortpixel' => [
+                'shortpixel_enabled' => Setting::get('shortpixel_enabled', false),
+                'shortpixel_api_key' => Setting::get('shortpixel_api_key') ? '********' : '',
+                'shortpixel_compression' => Setting::get('shortpixel_compression', 'lossy'),
+            ],
             'languages' => [
                 'default_locale' => LocaleManager::default(),
                 'locales' => LocaleManager::all(),
@@ -129,6 +134,26 @@ class SettingController extends Controller
 
         return redirect()->route('admin.settings.index', ['tab' => 'ga4'])
             ->with('success', 'Google Analytics 4 settings updated.');
+    }
+
+    public function updateShortpixel(Request $request)
+    {
+        $request->validate([
+            'shortpixel_api_key' => 'nullable|string|max:255',
+            'shortpixel_enabled' => 'nullable|boolean',
+            'shortpixel_compression' => 'nullable|in:lossy,glossy,lossless',
+        ]);
+
+        Setting::set('shortpixel_enabled', $request->boolean('shortpixel_enabled'), 'shortpixel', 'boolean');
+        Setting::set('shortpixel_compression', $request->shortpixel_compression ?: 'lossy', 'shortpixel');
+
+        // Only overwrite the stored key when a real (non-masked) value is submitted.
+        if ($request->shortpixel_api_key && $request->shortpixel_api_key !== '********') {
+            Setting::set('shortpixel_api_key', $request->shortpixel_api_key, 'shortpixel', 'encrypted');
+        }
+
+        return redirect()->route('admin.settings.index', ['tab' => 'shortpixel'])
+            ->with('success', 'ShortPixel settings updated.');
     }
 
     public function generateApiKey()

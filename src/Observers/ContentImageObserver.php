@@ -2,7 +2,9 @@
 
 namespace BlogCms\Observers;
 
+use BlogCms\Jobs\OptimizeMediaWithShortPixel;
 use BlogCms\Services\ContentImageIngestor;
+use BlogCms\Services\ShortPixelOptimizer;
 use BlogCms\Support\LocaleManager;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
@@ -22,7 +24,10 @@ use Spatie\MediaLibrary\HasMedia;
  */
 class ContentImageObserver
 {
-    public function __construct(private ContentImageIngestor $ingestor) {}
+    public function __construct(
+        private ContentImageIngestor $ingestor,
+        private ShortPixelOptimizer $shortpixel,
+    ) {}
 
     public function saved(Model $post): void
     {
@@ -46,13 +51,35 @@ class ContentImageObserver
             }
         }
 
-        if (! $changed) {
+        if ($changed) {
+            // Rebuild the TOC + rendered HTML from the final (rewritten) content,
+            // then persist without firing events again (avoids re-ingest loops).
+            app(BlogPostTocObserver::class)->saving($post);
+            $post->saveQuietly();
+        }
+
+        $this->queueImageOptimization($post, $collection);
+    }
+
+    /**
+     * Queue a ShortPixel optimization job for each content image not yet
+     * optimized. The per-media flag makes this idempotent across saves, so only
+     * new images are ever dispatched.
+     */
+    protected function queueImageOptimization(HasMedia $post, string $collection): void
+    {
+        if (! $this->shortpixel->enabled()) {
             return;
         }
 
-        // Rebuild the TOC + rendered HTML from the final (rewritten) content,
-        // then persist without firing events again (avoids re-ingest loops).
-        app(BlogPostTocObserver::class)->saving($post);
-        $post->saveQuietly();
+        $queue = config('blog-cms.media.shortpixel.queue');
+
+        foreach ($post->getMedia($collection) as $media) {
+            if ($media->getCustomProperty('shortpixel_optimized')) {
+                continue;
+            }
+
+            OptimizeMediaWithShortPixel::dispatch($media->id)->onQueue($queue);
+        }
     }
 }

@@ -238,6 +238,30 @@ Two mechanisms:
   `media.allowed_image_hosts` (empty = any public host). Blocked/failed fetches are logged and the
   original `src` is left in place — they never break the save.
 
+- **Responsive content images (`srcset`):** every stored content `<img>` gets a `srcset` built from
+  width buckets (`media.content_image.srcset_widths`, generated as MediaLibrary conversions named
+  `content-{w}`) plus a `sizes` hint, so browsers fetch a right-sized image instead of the full
+  upload. **The admin's set size wins** — when the editor's size control has set a width/height, that
+  width (and its aspect ratio) drives the `width`/`height` attributes; **when none is set, the image
+  is capped at `media.content_image.max_width` keeping its natural aspect ratio.** Buckets wider than
+  the original are never used (no upscaling). If the original exceeds `max_width`, `src` is repointed
+  at the largest bucket so the oversized file is never served. Bucket URLs are indexed on load, so
+  the rewritten `src`/`srcset` are recognised on the next save and never re-ingested.
+
+  > Existing posts from before this feature won't have the `content-{w}` conversions — run
+  > `php artisan media-library:regenerate` once to backfill them.
+
+- **ShortPixel optimization (queued):** enable it and set the **API key in the admin UI**
+  (**Settings → Image Optimization**; stored encrypted in the settings table — no `.env` needed, though
+  `media.shortpixel.*` env fallbacks exist for headless setups). On save, each un-optimized content
+  image is queued (`OptimizeMediaWithShortPixel`) to the ShortPixel reducer API. The job sends the
+  image's public URL, writes the optimized bytes back **in place** (same format), marks the media
+  (`shortpixel_optimized` custom property, so it's never re-optimized), and regenerates the `srcset`
+  buckets from the optimized original. Compression is `lossy`/`glossy`/`lossless`. ShortPixel processes
+  asynchronously — a "pending" result re-queues with a delay up to `max_poll_attempts`. **Requires a
+  running queue worker**, and content media must be **publicly reachable** by ShortPixel's servers.
+  Best-effort: every failure is logged and never disrupts saving.
+
 ## Search
 
 Site-wide search lives in `BlogCms\Services\SearchService`. A post is a hit when the term

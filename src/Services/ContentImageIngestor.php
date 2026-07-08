@@ -55,22 +55,28 @@ class ContentImageIngestor
             }
 
             $src = trim($img->getAttribute('src'));
+            $media = $src !== '' ? ($byUrl[$src] ?? null) : null;
 
             // 1) Ingest remote/base64 images into MediaLibrary and rewrite src.
             //    Skip empty srcs and images already stored locally for this model.
-            if ($ingestEnabled && $src !== '' && ! isset($byUrl[$src])) {
+            if (! $media && $ingestEnabled && $src !== '') {
                 // Previously ingested from this exact source → reuse, don't refetch.
                 $media = $bySource[$src] ?? $this->store($model, $collection, $src);
                 if ($media) {
                     $bySource[$src] = $media;
-                    $byUrl[$media->getUrl()] = true;
+                    $byUrl[$media->getUrl()] = $media;
                     $img->setAttribute('src', $media->getUrl());
-                    $this->applyDimensions($img, $media);
                     $changed = true;
                 }
             }
 
-            // 2) Stamp lazy-loading on EVERY image — ingested, already-local, or a
+            // 2) For any stored content image (just-ingested or already-local),
+            //    add responsive srcset + intrinsic width/height.
+            if ($media && $this->applyResponsive($img, $media)) {
+                $changed = true;
+            }
+
+            // 3) Stamp lazy-loading on EVERY image — ingested, already-local, or a
             //    relative/app path — including the <img> fallback inside <picture>.
             if ($this->lazyLoad($img)) {
                 $changed = true;
@@ -202,32 +208,138 @@ class ContentImageIngestor
         return $changed;
     }
 
-    /** Best-effort intrinsic width/height (from the stored file) to cut layout shift. */
-    protected function applyDimensions(DOMElement $img, mixed $media): void
+    /**
+     * Responsive images for a stored content <img>: a width-bucket srcset (only
+     * buckets no wider than the original — never upscaled) plus a sizes hint, and
+     * width/height attributes. The admin's chosen display size wins; if none was
+     * set, the image is capped at max_width keeping its natural aspect ratio.
+     *
+     * When the original is wider than max_width, `src` is pointed at the largest
+     * bucket so the huge upload is never served (only offered via srcset for
+     * pre-srcset browsers otherwise). Bucket URLs are indexed on load, so the
+     * rewritten `src`/`srcset` are recognised on re-save and never re-ingested.
+     *
+     * Only sets attributes that are absent, and returns whether anything changed.
+     */
+    protected function applyResponsive(DOMElement $img, mixed $media): bool
     {
-        if ($img->hasAttribute('width') && $img->hasAttribute('height')) {
-            return;
-        }
-
         try {
             $size = @getimagesize($media->getPath());
-            if ($size) {
-                $img->setAttribute('width', (string) $size[0]);
-                $img->setAttribute('height', (string) $size[1]);
-            }
         } catch (Throwable) {
-            // dimensions are best-effort
+            $size = false;
         }
+        if (! $size || (int) $size[0] < 1) {
+            return false;
+        }
+
+        [$originalWidth, $originalHeight] = [(int) $size[0], (int) $size[1]];
+        $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
+        $ceiling = min($originalWidth, $maxWidth);
+        $capped = $originalWidth > $maxWidth;
+
+        $changed = false;
+
+        // srcset from the buckets that fit within the original width.
+        if (! $img->hasAttribute('srcset')) {
+            $candidates = [];
+            $largestBucketUrl = null;
+            foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
+                $width = (int) $width;
+                if ($width < 1 || $width > $maxWidth || $width > $originalWidth) {
+                    continue;
+                }
+                $url = $media->getUrl('content-'.$width);
+                $candidates[$width] = $url.' '.$width.'w';
+                $largestBucketUrl = $url; // widths iterate ascending → last is largest
+            }
+
+            // Include the original only when it isn't over the cap (else it's the
+            // huge file we want to avoid serving).
+            if (! $capped) {
+                $candidates[$originalWidth] ??= $media->getUrl().' '.$originalWidth.'w';
+            }
+
+            // For a capped image, serve the largest bucket as src, not the original.
+            if ($capped && $largestBucketUrl) {
+                $img->setAttribute('src', $largestBucketUrl);
+                $changed = true;
+            }
+
+            if (count($candidates) > 1) {
+                ksort($candidates);
+                $img->setAttribute('srcset', implode(', ', $candidates));
+                if (! $img->hasAttribute('sizes')) {
+                    $img->setAttribute('sizes', (string) config('blog-cms.media.content_image.sizes', '100vw'));
+                }
+                $changed = true;
+            }
+        }
+
+        // width/height: honour the admin's set size (aspect ratio and all); else
+        // cap at max_width using the image's natural aspect ratio.
+        if (! $img->hasAttribute('width') || ! $img->hasAttribute('height')) {
+            [$adminWidth, $adminHeight] = $this->authorSize($img);
+
+            if ($adminWidth && $adminHeight) {
+                $targetWidth = min($adminWidth, $ceiling);
+                $targetHeight = (int) round($targetWidth * ($adminHeight / $adminWidth));
+            } else {
+                $targetWidth = $adminWidth ? min($adminWidth, $ceiling) : $ceiling;
+                $targetHeight = (int) round($targetWidth * ($originalHeight / $originalWidth));
+            }
+
+            $img->setAttribute('width', (string) $targetWidth);
+            $img->setAttribute('height', (string) $targetHeight);
+            $changed = true;
+        }
+
+        return $changed;
     }
 
-    /** @return array{0: array<string,bool>, 1: array<string,mixed>} [byUrl, bySourceUrl] */
+    /**
+     * The display size the admin set on the image, if any — from width/height
+     * attributes or an inline `style="width:…px;height:…px"`. Returns [w, h] with
+     * null for either dimension that isn't an explicit pixel value.
+     *
+     * @return array{0: ?int, 1: ?int}
+     */
+    protected function authorSize(DOMElement $img): array
+    {
+        $fromAttr = fn (string $name) => ctype_digit($v = trim($img->getAttribute($name))) ? (int) $v : null;
+
+        $width = $fromAttr('width');
+        $height = $fromAttr('height');
+
+        if (($width === null || $height === null) && $img->hasAttribute('style')) {
+            $style = $img->getAttribute('style');
+            if ($width === null && preg_match('/(?:^|[;\s])width\s*:\s*(\d+)\s*px/i', $style, $m)) {
+                $width = (int) $m[1];
+            }
+            if ($height === null && preg_match('/(?:^|[;\s])height\s*:\s*(\d+)\s*px/i', $style, $m)) {
+                $height = (int) $m[1];
+            }
+        }
+
+        return [$width, $height];
+    }
+
+    /** @return array{0: array<string,mixed>, 1: array<string,mixed>} [byUrl => media, bySourceUrl => media] */
     protected function indexExistingMedia(HasMedia $model, string $collection): array
     {
         $byUrl = [];
         $bySource = [];
 
+        $bucketWidths = config('blog-cms.media.content_image.srcset_widths', []);
+
         foreach ($model->getMedia($collection) as $media) {
-            $byUrl[$media->getUrl()] = true;
+            $byUrl[$media->getUrl()] = $media;
+
+            // Index the responsive-bucket URLs too, so a src/srcset we previously
+            // rewrote to a "content-{w}" conversion is recognised (not re-ingested).
+            foreach ($bucketWidths as $width) {
+                $byUrl[$media->getUrl('content-'.(int) $width)] = $media;
+            }
+
             if ($source = $media->getCustomProperty('source_url')) {
                 $bySource[$source] = $media;
             }

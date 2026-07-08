@@ -158,5 +158,23 @@ class BlogPost extends Model implements HasMedia
         $this->addMediaConversion('preview')
             ->width(800)
             ->height(600);
+
+        // Responsive srcset buckets for inline content images. Width-only, so the
+        // natural aspect ratio is preserved; generated synchronously (nonQueued)
+        // so the URLs are valid the moment the ingestor writes the srcset.
+        $contentCollection = config('blog-cms.media.content_collection', 'content');
+        $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
+
+        foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
+            $width = (int) $width;
+            if ($width < 1 || $width > $maxWidth) {
+                continue;
+            }
+
+            $this->addMediaConversion('content-'.$width)
+                ->width($width)
+                ->performOnCollections($contentCollection)
+                ->nonQueued();
+        }
     }
 }
