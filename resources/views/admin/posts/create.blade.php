@@ -144,6 +144,24 @@
                             @enderror
                         </div>
 
+                        {{-- Reviewed by (editorial reviewer → schema.org reviewedBy) --}}
+                        <div class="lg:col-span-2">
+                            <label for="reviewed_by" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Reviewed by</label>
+                            <select name="reviewed_by" id="reviewed_by"
+                                    class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+                                <option value="">— Not reviewed —</option>
+                                @foreach($reviewers ?? [] as $reviewer)
+                                    <option value="{{ $reviewer->user_id }}" {{ (int) old('reviewed_by') === (int) $reviewer->user_id ? 'selected' : '' }}>
+                                        {{ $reviewer->name() }}{{ $reviewer->role ? ' — '.$reviewer->role : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">The credentialed editor who vetted this article. Adds <code>reviewedBy</code> to the schema so a newer author inherits authority from an established expert.</p>
+                            @error('reviewed_by')
+                                <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+                        </div>
+
                         {{-- Excerpt --}}
                         <div class="lg:col-span-2">
                             <label for="excerpt" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Excerpt</label>

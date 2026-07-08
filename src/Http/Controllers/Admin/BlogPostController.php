@@ -4,12 +4,14 @@ namespace BlogCms\Http\Controllers\Admin;
 
 use BlogCms\Http\Controllers\Admin\Concerns\EditsTranslations;
 use BlogCms\Http\Controllers\Controller;
+use BlogCms\Models\BlogAuthorProfile;
 use BlogCms\Models\BlogCategory;
 use BlogCms\Models\BlogPost;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BlogPostController extends Controller
 {
@@ -42,8 +44,15 @@ class BlogPostController extends Controller
 
         return view('blog::admin.posts.create', [
             'categories' => $categories,
+            'reviewers' => $this->reviewers(),
             'locale' => $this->editingLocale($request),
         ]);
+    }
+
+    /** Author profiles eligible to be an editorial reviewer (reviewedBy). */
+    protected function reviewers()
+    {
+        return BlogAuthorProfile::with('user')->orderBy('slug')->get();
     }
 
     public function store(Request $request)
@@ -51,6 +60,7 @@ class BlogPostController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'blog_category_id' => 'required|exists:blog_categories,id',
+            'reviewed_by' => ['nullable', Rule::exists('blog_author_profiles', 'user_id')],
             'status' => 'required|in:0,1,2',
             'excerpt' => 'nullable|string',
             'content' => 'nullable|string',
@@ -83,6 +93,7 @@ class BlogPostController extends Controller
         DB::transaction(function () use ($validated, $request, $locale) {
             $post = new BlogPost(array_merge([
                 'blog_category_id' => $validated['blog_category_id'],
+                'reviewed_by' => $validated['reviewed_by'] ?? null,
                 'status' => $validated['status'],
                 'is_featured' => $request->boolean('is_featured'),
                 'published_at' => $validated['published_at'] ?? null,
@@ -124,6 +135,7 @@ class BlogPostController extends Controller
         return view('blog::admin.posts.edit', [
             'post' => $post,
             'categories' => $categories,
+            'reviewers' => $this->reviewers(),
             'locale' => $this->editingLocale($request),
         ]);
     }
@@ -133,6 +145,7 @@ class BlogPostController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'blog_category_id' => 'required|exists:blog_categories,id',
+            'reviewed_by' => ['nullable', Rule::exists('blog_author_profiles', 'user_id')],
             'status' => 'required|in:0,1,2',
             'excerpt' => 'nullable|string',
             'content' => 'nullable|string',
@@ -155,6 +168,7 @@ class BlogPostController extends Controller
         DB::transaction(function () use ($validated, $post, $request, $locale) {
             $post->fill(array_merge([
                 'blog_category_id' => $validated['blog_category_id'],
+                'reviewed_by' => $validated['reviewed_by'] ?? null,
                 'status' => $validated['status'],
                 'is_featured' => $request->boolean('is_featured'),
                 'published_at' => $validated['published_at'] ?? $post->published_at,

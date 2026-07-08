@@ -41,6 +41,8 @@ class BlogAuthorProfileController extends Controller
             'display_name' => $validated['display_name'] ?? null,
             'role' => $validated['role'] ?? null,
             'social_links' => $this->cleanLinks($request),
+            'knows_about' => $this->parseKnowsAbout($request),
+            'credentials' => $this->cleanCredentials($request),
             'is_indexable' => $request->boolean('is_indexable'),
         ]);
         $profile->slug = $this->uniqueSlug($validated['display_name'] ?? $this->userName($validated['user_id']));
@@ -73,6 +75,8 @@ class BlogAuthorProfileController extends Controller
             'display_name' => $validated['display_name'] ?? null,
             'role' => $validated['role'] ?? null,
             'social_links' => $this->cleanLinks($request),
+            'knows_about' => $this->parseKnowsAbout($request),
+            'credentials' => $this->cleanCredentials($request),
             'is_indexable' => $request->boolean('is_indexable'),
         ]);
         $this->fillTranslations($author, $request, $locale);
@@ -103,6 +107,10 @@ class BlogAuthorProfileController extends Controller
             'social_links' => 'nullable|array',
             'social_links.*.label' => 'nullable|string|max:100',
             'social_links.*.url' => 'nullable|url|max:2048',
+            'knows_about' => 'nullable|string',
+            'credentials' => 'nullable|array',
+            'credentials.*.name' => 'nullable|string|max:255',
+            'credentials.*.category' => 'nullable|string|max:100',
             'is_indexable' => 'nullable|boolean',
             'avatar' => 'nullable|image|max:5120',
             'locale' => 'nullable|string',
@@ -114,6 +122,26 @@ class BlogAuthorProfileController extends Controller
         return array_values(array_filter(
             (array) $request->input('social_links', []),
             fn ($l) => ! empty($l['url']),
+        ));
+    }
+
+    /** "knows about" textarea → array of trimmed, non-empty topics (one per line). */
+    protected function parseKnowsAbout(Request $request): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', (string) $request->input('knows_about', ''));
+
+        return array_values(array_filter(array_map('trim', $lines), fn ($t) => $t !== ''));
+    }
+
+    /** Credential repeater rows → [{name, category}], keeping only named ones. */
+    protected function cleanCredentials(Request $request): array
+    {
+        return array_values(array_filter(
+            array_map(fn ($c) => [
+                'name' => trim((string) ($c['name'] ?? '')),
+                'category' => trim((string) ($c['category'] ?? '')),
+            ], (array) $request->input('credentials', [])),
+            fn ($c) => $c['name'] !== '',
         ));
     }
 

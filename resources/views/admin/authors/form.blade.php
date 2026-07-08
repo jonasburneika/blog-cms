@@ -4,6 +4,9 @@
     $links = old('social_links', $isEdit ? $author->socialLinks() : []);
     if (empty($links)) { $links = [['label' => '', 'url' => '']]; }
     $userId = old('user_id', $isEdit ? $author->user_id : '');
+    $knowsAboutVal = old('knows_about', $isEdit ? implode("\n", $author->knowsAbout()) : '');
+    $creds = old('credentials', $isEdit ? $author->credentials() : []);
+    if (empty($creds)) { $creds = [['name' => '', 'category' => '']]; }
 @endphp
 
 <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-6">
@@ -59,14 +62,18 @@
         @include('blog::admin.partials.locale-switcher')
         <div class="mb-5">
             <label for="bio" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Bio</label>
-            <textarea name="bio" id="bio" rows="4"
+            <textarea name="bio" id="bio" rows="5" x-data="{ words: 0 }"
+                      x-init="words = $el.value.trim().split(/\s+/).filter(Boolean).length"
+                      @input="words = $el.value.trim().split(/\s+/).filter(Boolean).length"
                       class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
-                      placeholder="Short author bio for this language">{{ $bioVal }}</textarea>
+                      placeholder="A descriptive, professional bio — specific background, years of experience, and passion for the topic.">{{ $bioVal }}</textarea>
+            <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Aim for a specific ~150-word bio. Feeds schema.org <code>description</code> on the author's Person node. <span x-text="words + ' words'"></span></p>
         </div>
 
-        {{-- Social links --}}
+        {{-- Verification links (schema.org sameAs) --}}
         <div class="mb-5" x-data="{ links: @js(array_values($links)) }">
-            <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Social / profile links</label>
+            <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Profiles &amp; verification links (sameAs)</label>
+            <p class="mb-2 text-xs text-stone-400 dark:text-stone-500">Anything that proves a real, credible human: personal site, GitHub, a hosted CV/certificate PDF, Medium, a professional Reddit or niche-forum profile — not only mainstream social. Exposed as schema.org <code>sameAs</code>.</p>
             <template x-for="(link, i) in links" :key="i">
                 <div class="flex items-center gap-2 mb-2">
                     <input type="text" x-model="link.label" :name="'social_links['+i+'][label]'" placeholder="Label (e.g. LinkedIn)"
@@ -83,6 +90,37 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
                 Add link
             </button>
+        </div>
+
+        {{-- Areas of expertise (schema.org knowsAbout) --}}
+        <div class="mb-5">
+            <label for="knows_about" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Areas of expertise (knowsAbout)</label>
+            <textarea name="knows_about" id="knows_about" rows="4"
+                      class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition resize-y"
+                      placeholder="One topic per line, e.g.&#10;Living Soil Systems&#10;Compost Tea Brewing&#10;Permaculture Design">{{ $knowsAboutVal }}</textarea>
+            <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">One topic per line. Exposed as schema.org <code>knowsAbout</code>.</p>
+        </div>
+
+        {{-- Credentials (schema.org hasCredential) --}}
+        <div class="mb-5" x-data="{ creds: @js(array_values($creds)) }">
+            <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Credentials (hasCredential)</label>
+            <template x-for="(c, i) in creds" :key="i">
+                <div class="flex items-center gap-2 mb-2">
+                    <input type="text" x-model="c.name" :name="'credentials['+i+'][name]'" placeholder="Name (e.g. Permaculture Design Certification)"
+                           class="flex-1 px-3 py-2 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <input type="text" x-model="c.category" :name="'credentials['+i+'][category]'" placeholder="Category (e.g. Certification)"
+                           class="w-1/3 px-3 py-2 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-sm text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <button type="button" @click="creds.splice(i, 1)" class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Remove">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </template>
+            <button type="button" @click="creds.push({name:'',category:''})"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-neutral-700 rounded-lg hover:bg-stone-200 dark:hover:bg-neutral-600 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                Add credential
+            </button>
+            <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Degrees, certifications or licenses. Exposed as schema.org <code>hasCredential</code> (EducationalOccupationalCredential).</p>
         </div>
 
         {{-- Indexable --}}

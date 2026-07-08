@@ -46,6 +46,7 @@ class BlogPost extends Model implements HasMedia
     protected $fillable = [
         'blog_category_id',
         'user_id',
+        'reviewed_by',
         'title',
         'slug',
         'excerpt',
@@ -102,6 +103,18 @@ class BlogPost extends Model implements HasMedia
     public function authorProfile(): HasOne
     {
         return $this->hasOne(BlogAuthorProfile::class, 'user_id', 'user_id');
+    }
+
+    /** The editorial reviewer (a user), when the post was vetted before publishing. */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(config('blog-cms.models.user'), 'reviewed_by');
+    }
+
+    /** The reviewer's public author profile → schema.org Article.reviewedBy. */
+    public function reviewerProfile(): HasOne
+    {
+        return $this->hasOne(BlogAuthorProfile::class, 'user_id', 'reviewed_by');
     }
 
     public function faqs(): HasMany

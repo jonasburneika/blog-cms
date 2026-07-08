@@ -30,6 +30,8 @@ class BlogAuthorProfile extends Model implements HasMedia
         'role',
         'bio',
         'social_links',
+        'knows_about',
+        'credentials',
         'is_indexable',
     ];
 
@@ -37,6 +39,8 @@ class BlogAuthorProfile extends Model implements HasMedia
     {
         return [
             'social_links' => 'array',
+            'knows_about' => 'array',
+            'credentials' => 'array',
             'is_indexable' => 'boolean',
         ];
     }
@@ -76,6 +80,31 @@ class BlogAuthorProfile extends Model implements HasMedia
         return array_values(array_filter(
             (array) $this->social_links,
             fn ($l) => ! empty($l['url']),
+        ));
+    }
+
+    /** Areas of expertise → schema.org Person.knowsAbout. @return array<int,string> */
+    public function knowsAbout(): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($t) => trim((string) $t),
+            (array) $this->knows_about,
+        ), fn ($t) => $t !== ''));
+    }
+
+    /**
+     * Credentials (degrees/certs/licenses) → schema.org Person.hasCredential.
+     *
+     * @return array<int, array{name:string,category:?string}>
+     */
+    public function credentials(): array
+    {
+        return array_values(array_filter(
+            array_map(fn ($c) => [
+                'name' => trim((string) ($c['name'] ?? '')),
+                'category' => trim((string) ($c['category'] ?? '')) ?: null,
+            ], (array) $this->credentials),
+            fn ($c) => $c['name'] !== '',
         ));
     }
 

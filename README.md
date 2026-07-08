@@ -177,15 +177,39 @@ live-page shadowing are guarded. Run `php artisan migrate`.
 
 Author profiles live in the package (`blog_author_profiles`) so the app's `users` table is
 untouched. Each profile links to a user and adds a byline/`display_name`, `role`, **translatable
-bio**, avatar (MediaLibrary), social links, and an `is_indexable` flag (thin author pages stay
-noindex). Manage them under **Authors** in the admin.
+bio**, avatar (MediaLibrary), verification links, areas of expertise, credentials, and an
+`is_indexable` flag (thin author pages stay noindex). Manage them under **Authors** in the admin.
 
-- `$post->authorProfile` — the writer's profile; the **Article schema** author node is enriched
-  with job title, avatar `image`, social `sameAs`, and (when indexable) the author-page `url`.
-- `BlogAuthorProfile`: `name()`, `avatarUrl()`, `socialLinks()`, `bio` (per locale),
-  `publishedPosts()`, `pageUrl()` / `pagePath()` (`author/{slug}`, prefix configurable via
-  `blog-cms.author_url.prefix`). The app owns the actual `/author/{slug}` route/template
-  (headless) and should `noindex` it unless `is_indexable`.
+The author profile is an **E-E-A-T** signal builder — the **Article schema**'s `author` `Person`
+node is enriched from it:
+
+- **`url`** → the internal `/author/{slug}` page (when `is_indexable`) — the definitive identity
+  anchor for the writer, per Google's Knowledge Graph guidance.
+- **`description`** ← the bio (aim for a specific ~150-word paragraph; the form shows a word count).
+- **`jobTitle`** ← role, **`image`** ← avatar.
+- **`sameAs`** ← the profiles/verification links (personal site, GitHub, a hosted CV/certificate
+  PDF, Medium, professional Reddit/forum profiles — not only mainstream social).
+- **`knowsAbout`** ← areas of expertise (one per line).
+- **`hasCredential`** ← credentials as `EducationalOccupationalCredential` (name + category, e.g.
+  "Permaculture Design Certification" / "Certification").
+
+**Editorial review (`reviewedBy`):** posts have a **Reviewed by** picker (`reviewed_by` → a user
+with an author profile). When set, the Article schema gets a `reviewedBy` `Person` (fully enriched
+like the author), so a newer author can inherit authority from an established expert who vetted the
+article.
+
+**Captioned images (`ImageObject`):** the Article's `image` is emitted as `ImageObject`(s) with
+`caption` — the cover (caption from meta/title) plus any body `<img>` that carry **alt text** (their
+alt becomes the caption). Give original, first-hand photos descriptive alt that echoes the article's
+core keywords.
+
+- `BlogAuthorProfile`: `name()`, `avatarUrl()`, `socialLinks()`, `knowsAbout()`, `credentials()`,
+  `bio` (per locale), `publishedPosts()`, `pageUrl()` / `pagePath()` (`author/{slug}`, prefix
+  configurable via `blog-cms.author_url.prefix`). The app owns the actual `/author/{slug}`
+  route/template (headless) and should `noindex` it unless `is_indexable`.
+
+> Publisher / `mainEntityOfPage` stay app-owned (they need your domain, org name and logo) — set
+> them in the app's schema wrapper around `SchemaBuilder::article()`.
 
 ## Category hierarchy
 
