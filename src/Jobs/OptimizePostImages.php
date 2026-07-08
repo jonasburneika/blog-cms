@@ -4,6 +4,7 @@ namespace BlogCms\Jobs;
 
 use BlogCms\Services\ContentImageIngestor;
 use BlogCms\Services\ShortPixelOptimizer;
+use BlogCms\Support\ImageFormats;
 use BlogCms\Support\LocaleManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,11 +22,15 @@ use Spatie\MediaLibrary\HasMedia;
  * images via ShortPixel. One job per post so the content HTML is re-woven
  * exactly once — after the format variants exist — with no cross-job races.
  *
- * Per image it: writes the optimized (same-format) bytes back in place, stores
- * each ShortPixel-converted WebP/AVIF as a sibling media (content-{format}, with
- * a `variant_of` link), and marks the source `shortpixel_optimized` (idempotent).
- * Once every image is done it re-runs the ingestor so each <img> is wrapped in a
- * <picture> with the new <source>s. ShortPixel is async — a "pending" result
+ * A pristine copy of each original is kept before the first optimization
+ * (config media.shortpixel.keep_backup) so we can always re-optimize from the
+ * source and fall back if an optimization goes wrong. Downloaded bytes are
+ * validated as real images before anything is overwritten, and only kept when
+ * actually smaller.
+ *
+ * With $reoptimize = true the post's images are first reset (originals restored
+ * from backup, existing variants + flags cleared) and then run through the
+ * current ShortPixel settings again. ShortPixel is async — a "pending" result
  * re-queues the whole job (already-done images are skipped) up to a bounded
  * number of attempts. Every failure is logged and swallowed.
  */
@@ -36,6 +41,7 @@ class OptimizePostImages implements ShouldQueue
     public function __construct(
         public int $postId,
         public int $pollAttempt = 1,
+        public bool $reoptimize = false,
     ) {}
 
     public function handle(ShortPixelOptimizer $optimizer, ContentImageIngestor $ingestor): void
@@ -51,6 +57,13 @@ class OptimizePostImages implements ShouldQueue
         }
 
         $collection = config('blog-cms.media.content_collection', 'content');
+
+        // Reoptimize: restore pristine originals + drop existing variants/flags
+        // once, on the first pass, so the loop below re-runs everything fresh.
+        if ($this->reoptimize && $this->pollAttempt === 1) {
+            $this->resetForReoptimize($post, $collection);
+        }
+
         $pending = false;
         $processed = false;
 
@@ -101,22 +114,23 @@ class OptimizePostImages implements ShouldQueue
     protected function applyResult(Model $post, mixed $media, array $item, ShortPixelOptimizer $optimizer, string $collection): void
     {
         try {
-            // Track the effective original size so we never keep a file that
-            // isn't actually smaller.
+            // Keep a pristine copy before we ever overwrite the original.
+            $this->backupOriginal($media);
+
             $originalSize = (int) $media->size;
 
             // Optimized original bytes → overwrite in place (URL unchanged), only
-            // when ShortPixel actually made it smaller.
+            // when it's a valid image AND ShortPixel actually made it smaller.
             $url = $optimizer->optimizedUrl($item);
             $bytes = $url ? $optimizer->download($url) : null;
-            if ($bytes !== null && $bytes !== '' && ($originalSize <= 0 || strlen($bytes) < $originalSize)) {
+            if ($this->isImage($bytes) && ($originalSize <= 0 || strlen($bytes) < $originalSize)) {
                 Storage::disk($media->disk)->put($media->getPathRelativeToRoot(), $bytes);
                 $media->size = strlen($bytes);
                 $originalSize = strlen($bytes);
             }
 
             // ShortPixel-converted WebP/AVIF → store as sibling variant media,
-            // but only when the variant is smaller than the original (else a
+            // but only when a valid image smaller than the original (else a
             // <picture> would serve a *bigger* modern format).
             foreach ($optimizer->formats() as $format) {
                 if ($media->getCustomProperty("variant_{$format}_id")) {
@@ -125,7 +139,7 @@ class OptimizePostImages implements ShouldQueue
 
                 $formatUrl = $optimizer->formatUrl($item, $format);
                 $formatBytes = $formatUrl ? $optimizer->download($formatUrl) : null;
-                if ($formatBytes === null || $formatBytes === '') {
+                if (! $this->isImage($formatBytes)) {
                     continue;
                 }
                 if ($originalSize > 0 && strlen($formatBytes) >= $originalSize) {
@@ -153,6 +167,84 @@ class OptimizePostImages implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /** Copy the pristine original aside once, so we can restore/re-optimize from it. */
+    protected function backupOriginal(mixed $media): void
+    {
+        if (! config('blog-cms.media.shortpixel.keep_backup', true)) {
+            return;
+        }
+        if ($media->getCustomProperty('original_backup')) {
+            return; // already backed up
+        }
+
+        $disk = Storage::disk($media->disk);
+        $path = $media->getPathRelativeToRoot();
+        $backup = $this->backupPath($path);
+
+        if ($disk->exists($path)) {
+            $disk->copy($path, $backup);
+            $media->setCustomProperty('original_backup', $backup);
+            $media->setCustomProperty('original_size', (int) $media->size);
+            $media->save();
+        }
+    }
+
+    protected function backupPath(string $path): string
+    {
+        return dirname($path).'/shortpixel-backup/'.basename($path);
+    }
+
+    /**
+     * Prepare a post for reoptimization: restore each content image from its
+     * backup, delete the WebP/AVIF variant media, and clear the optimize flags
+     * so the main loop reprocesses everything with the current settings.
+     */
+    protected function resetForReoptimize(HasMedia $post, string $collection): void
+    {
+        // Drop every converted variant (linked or orphaned) in one go.
+        foreach (ImageFormats::SUPPORTED as $format) {
+            $post->clearMediaCollection($collection.'-'.$format);
+        }
+
+        foreach ($post->getMedia($collection) as $media) {
+            $this->restoreOriginal($media);
+
+            foreach (ImageFormats::SUPPORTED as $format) {
+                $media->forgetCustomProperty("variant_{$format}_id");
+            }
+            $media->forgetCustomProperty('shortpixel_optimized');
+            $media->forgetCustomProperty('shortpixel_savings');
+            $media->save();
+
+            // Regenerate the srcset buckets from the restored original.
+            app(FileManipulator::class)->createDerivedFiles($media);
+        }
+    }
+
+    /** Restore the pristine original from its backup (no-op if none was kept). */
+    protected function restoreOriginal(mixed $media): void
+    {
+        $backup = $media->getCustomProperty('original_backup');
+        if (! $backup) {
+            return;
+        }
+
+        $disk = Storage::disk($media->disk);
+        if ($disk->exists($backup)) {
+            $disk->copy($backup, $media->getPathRelativeToRoot());
+            if ($size = $media->getCustomProperty('original_size')) {
+                $media->size = (int) $size;
+            }
+            $media->save();
+        }
+    }
+
+    /** True when the bytes are a decodable image (guards against corrupt output). */
+    protected function isImage(?string $bytes): bool
+    {
+        return $bytes !== null && $bytes !== '' && @getimagesizefromstring($bytes) !== false;
     }
 
     /** Re-run the ingestor so each content <img> is wrapped in a <picture>. */
@@ -190,7 +282,7 @@ class OptimizePostImages implements ShouldQueue
 
         $delay = (int) config('blog-cms.media.shortpixel.poll_delay', 20);
 
-        static::dispatch($this->postId, $this->pollAttempt + 1)
+        static::dispatch($this->postId, $this->pollAttempt + 1, $this->reoptimize)
             ->delay(now()->addSeconds($delay))
             ->onQueue(config('blog-cms.media.shortpixel.queue'));
     }

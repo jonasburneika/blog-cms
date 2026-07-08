@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Thin client for the ShortPixel reducer API (https://shortpixel.com/api-docs).
  * Sends a public image URL for optimization and downloads the optimized bytes.
- * The queue job (OptimizeMediaWithShortPixel) orchestrates polling + write-back;
+ * The queue job (OptimizePostImages) orchestrates polling + write-back;
  * this class just does the HTTP.
  */
 class ShortPixelOptimizer

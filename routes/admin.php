@@ -94,6 +94,7 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
         Route::put('/gsc', [SettingController::class, 'updateGsc'])->name('update.gsc');
         Route::put('/ga4', [SettingController::class, 'updateGa4'])->name('update.ga4');
         Route::put('/shortpixel', [SettingController::class, 'updateShortpixel'])->name('update.shortpixel');
+        Route::post('/reoptimize-images', [SettingController::class, 'reoptimizeImages'])->name('reoptimize-images');
         Route::post('/test-gsc', [SettingController::class, 'testGsc'])->name('test.gsc');
         Route::post('/test-ga4', [SettingController::class, 'testGa4'])->name('test.ga4');
         Route::post('/generate-api-key', [SettingController::class, 'generateApiKey'])->name('generate-api-key');

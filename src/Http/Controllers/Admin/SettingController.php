@@ -163,6 +163,20 @@ class SettingController extends Controller
             ->with('success', 'Image optimization settings updated.');
     }
 
+    public function reoptimizeImages()
+    {
+        if (! app(\BlogCms\Services\ShortPixelOptimizer::class)->enabled()) {
+            return redirect()->route('admin.settings.index', ['tab' => 'shortpixel'])
+                ->with('error', 'Enable ShortPixel and set an API key before reoptimizing.');
+        }
+
+        \BlogCms\Jobs\ReoptimizeAllImages::dispatch()
+            ->onQueue(config('blog-cms.media.shortpixel.queue'));
+
+        return redirect()->route('admin.settings.index', ['tab' => 'shortpixel'])
+            ->with('success', 'Reoptimization queued — all content images will be reprocessed in the background with the current settings.');
+    }
+
     public function generateApiKey()
     {
         $key = 'ak_' . Str::random(48);

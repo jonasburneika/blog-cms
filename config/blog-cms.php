@@ -193,6 +193,11 @@ return [
             'api_key' => env('SHORTPIXEL_API_KEY'),
             'compression' => env('BLOG_CMS_SHORTPIXEL_COMPRESSION', 'lossy'), // lossy|glossy|lossless
             'keep_exif' => (bool) env('BLOG_CMS_SHORTPIXEL_KEEP_EXIF', false),
+            // Keep a pristine copy of each original before optimizing, so we can
+            // always re-optimize from the source (not a re-compressed file) and
+            // fall back if an optimization goes wrong. Stored beside the media on
+            // the same disk; removed automatically when the media is deleted.
+            'keep_backup' => (bool) env('BLOG_CMS_SHORTPIXEL_KEEP_BACKUP', true),
             'queue' => env('BLOG_CMS_SHORTPIXEL_QUEUE'),   // null = default queue
             'wait' => 30,          // seconds the API waits before returning "pending" (0-30)
             'max_poll_attempts' => 6,

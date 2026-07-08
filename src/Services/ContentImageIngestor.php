@@ -314,16 +314,89 @@ class ContentImageIngestor
      * once they're stored).
      *
      * @param  array<string,array<int,mixed>>  $variants  [format => [sourceMediaId => variantMedia]]
+     * Reconciles rather than only wraps: it computes the desired <source>s from
+     * the current variants and settings, and adds/updates/removes them so a
+     * reoptimize that changed the enabled formats is reflected. Idempotent — no
+     * change when the existing sources already match.
+     *
+     * @param  array<string,array<int,mixed>>  $variants  [format => [sourceMediaId => variantMedia]]
      */
     protected function wrapInPicture(DOMDocument $doc, DOMElement $img, mixed $media, array $variants): bool
     {
-        if (! ImageFormats::enabled() || ! $variants) {
+        $desired = $this->desiredSources($media, $variants); // list of [type, srcset, sizes]
+        $parent = $img->parentNode;
+        if (! $parent) {
+            return false;
+        }
+        $wrapped = strtolower($parent->nodeName) === 'picture';
+
+        // No formats/variants → make sure the image is NOT wrapped.
+        if (! $desired) {
+            if ($wrapped) {
+                $parent->parentNode?->replaceChild($img, $parent); // unwrap: <picture> → <img>
+
+                return true;
+            }
+
             return false;
         }
 
-        $parent = $img->parentNode;
-        if (! $parent || strtolower($parent->nodeName) === 'picture') {
-            return false; // no parent to replace within, or already wrapped
+        $makeSource = function (array $spec) use ($doc) {
+            $source = $doc->createElement('source');
+            $source->setAttribute('type', $spec['type']);
+            $source->setAttribute('srcset', $spec['srcset']);
+            $source->setAttribute('sizes', $spec['sizes']);
+
+            return $source;
+        };
+
+        if ($wrapped) {
+            $picture = $parent;
+            $existingSources = [];
+            foreach (iterator_to_array($picture->childNodes) as $node) {
+                if ($node instanceof DOMElement && strtolower($node->nodeName) === 'source') {
+                    $existingSources[] = $node;
+                }
+            }
+
+            // Already correct? Compare the ordered srcset list.
+            $have = array_map(fn (DOMElement $s) => $s->getAttribute('srcset'), $existingSources);
+            if ($have === array_column($desired, 'srcset')) {
+                return false;
+            }
+
+            foreach ($existingSources as $node) {
+                $picture->removeChild($node);
+            }
+            foreach ($desired as $spec) {
+                $picture->insertBefore($makeSource($spec), $img);
+            }
+
+            return true;
+        }
+
+        // Not wrapped yet → wrap.
+        $picture = $doc->createElement('picture');
+        $parent->replaceChild($picture, $img);
+        foreach ($desired as $spec) {
+            $picture->appendChild($makeSource($spec));
+        }
+        $picture->appendChild($img); // fallback comes last
+
+        return true;
+    }
+
+    /**
+     * Desired <picture> sources for a content image: one per enabled format that
+     * has a variant, each a width-bucket srcset. Empty when formats are off or no
+     * variants exist yet (produced asynchronously by the ShortPixel job).
+     *
+     * @return list<array{type:string,srcset:string,sizes:string}>
+     */
+    protected function desiredSources(mixed $media, array $variants): array
+    {
+        if (! ImageFormats::enabled() || ! $variants) {
+            return [];
         }
 
         try {
@@ -332,7 +405,7 @@ class ContentImageIngestor
             $size = false;
         }
         if (! $size || (int) $size[0] < 1) {
-            return false;
+            return [];
         }
 
         $originalWidth = (int) $size[0];
@@ -343,7 +416,7 @@ class ContentImageIngestor
         foreach (ImageFormats::enabled() as $format) {
             $variant = $variants[$format][$media->getKey()] ?? null;
             if (! $variant) {
-                continue; // ShortPixel hasn't produced this format yet
+                continue;
             }
 
             $entries = [];
@@ -358,25 +431,14 @@ class ContentImageIngestor
                 continue;
             }
 
-            $source = $doc->createElement('source');
-            $source->setAttribute('type', 'image/'.$format);
-            $source->setAttribute('srcset', implode(', ', $entries));
-            $source->setAttribute('sizes', $sizes);
-            $sources[] = $source;
+            $sources[] = [
+                'type' => 'image/'.$format,
+                'srcset' => implode(', ', $entries),
+                'sizes' => $sizes,
+            ];
         }
 
-        if (! $sources) {
-            return false;
-        }
-
-        $picture = $doc->createElement('picture');
-        $parent->replaceChild($picture, $img);
-        foreach ($sources as $source) {
-            $picture->appendChild($source);
-        }
-        $picture->appendChild($img); // fallback comes last
-
-        return true;
+        return $sources;
     }
 
     /**

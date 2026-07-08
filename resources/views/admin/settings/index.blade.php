@@ -778,6 +778,20 @@
                             </ul>
                         </div>
                     </div>
+
+                    {{-- Reoptimize all --}}
+                    <div class="mt-6 bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-warm-200 dark:border-neutral-700 p-5">
+                        <h3 class="text-sm font-semibold text-stone-700 dark:text-stone-300 mb-2">Reoptimize all images</h3>
+                        <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">Restores every content image from its saved original and reprocesses it through the current settings (compression &amp; formats), via the queue.</p>
+                        <form method="POST" action="{{ route('admin.settings.reoptimize-images') }}"
+                              onsubmit="return confirm('Reprocess every content image with the current ShortPixel settings? This runs in the background and may use API credits.')">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-stone-700 hover:bg-stone-800 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                Reoptimize all images
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

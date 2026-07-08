@@ -264,11 +264,21 @@ Two mechanisms:
 - **ShortPixel optimization (queued):** enable it and set the **API key in the admin UI**
   (**Settings → Image Optimization**; stored encrypted in the settings table — no `.env` needed, though
   `media.shortpixel.*` env fallbacks exist for headless setups). On save, each un-optimized content
-  image is queued (`OptimizeMediaWithShortPixel`) to the ShortPixel reducer API. The job sends the
-  image's public URL, writes the optimized bytes back **in place** (same format), marks the media
-  (`shortpixel_optimized` custom property, so it's never re-optimized), and regenerates the `srcset`
-  buckets from the optimized original. Compression is `lossy`/`glossy`/`lossless`, with an optional
-  **Keep EXIF** toggle (all in the same **Settings → Image Optimization** tab). ShortPixel processes
+  image is queued (`OptimizePostImages`, one job per post) to the ShortPixel reducer API. The job
+  writes the optimized bytes back **in place** (same format), marks the media (`shortpixel_optimized`
+  custom property, so it's never re-optimized), and regenerates the `srcset` buckets. Compression is
+  `lossy`/`glossy`/`lossless`, with an optional **Keep EXIF** toggle (all in the same
+  **Settings → Image Optimization** tab). Downloaded bytes are **validated as real images** and only
+  written when actually smaller, so a bad response never corrupts your media.
+
+  - **Original backup / fallback:** before the first optimization, a **pristine copy of each original**
+    is kept beside the media on the same disk (`media.shortpixel.keep_backup`, default on; removed when
+    the media is deleted). This is the fallback if an optimization goes wrong, and — importantly — the
+    source for re-optimization, so images are never re-compressed on top of an already-lossy file.
+  - **Reoptimize all:** **Settings → Image Optimization → Reoptimize all images** queues
+    `ReoptimizeAllImages`, which dispatches a per-post `OptimizePostImages(reoptimize: true)`. Each
+    restores its images from backup, drops the existing WebP/AVIF variants, and reruns them through the
+    **current** settings (compression + formats). All work is done in **queue jobs**. ShortPixel processes
   asynchronously — a "pending" result re-queues with a delay up to `max_poll_attempts`. **Requires a
   running queue worker**, and content media must be **publicly reachable** by ShortPixel's servers.
   Best-effort: every failure is logged and never disrupts saving.
