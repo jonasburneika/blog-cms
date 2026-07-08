@@ -33,6 +33,7 @@ class BlogAuthorProfile extends Model implements HasMedia
         'knows_about',
         'credentials',
         'is_indexable',
+        'is_guest',
     ];
 
     protected function casts(): array
@@ -42,6 +43,7 @@ class BlogAuthorProfile extends Model implements HasMedia
             'knows_about' => 'array',
             'credentials' => 'array',
             'is_indexable' => 'boolean',
+            'is_guest' => 'boolean',
         ];
     }
 

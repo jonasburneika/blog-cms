@@ -419,6 +419,11 @@ created, attributed to a guest author → editor reviews & publishes it in the n
 > Creating guest-author **users** writes to the app's `users` table (name/email + an unguessable
 > password → effectively no login). Turn it off with `guest_blogging.auto_create_author = false` to
 > attribute drafts to `api.default_author_id` instead. Notifications require the app's mail config.
+>
+> **Authorship-spoofing guard:** the pitch email is unverified, so the flow only ever reuses an
+> existing account that is itself a **guest author** (`blog_author_profiles.is_guest`). If the email
+> matches any other account (e.g. a staff/admin), the draft is attributed to the default author, never
+> to that account — so a guest post can't borrow a credentialed author's identity or E-E-A-T.
 
 ## What the consuming app must still provide
 

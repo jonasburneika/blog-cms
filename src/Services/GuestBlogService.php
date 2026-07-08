@@ -110,40 +110,61 @@ class GuestBlogService
         });
     }
 
-    /** Resolve (reuse by email) or create a locked guest-author user; returns its id. */
+    /**
+     * Resolve or create a locked guest-author user; returns its id.
+     *
+     * SECURITY: the pitch email is attacker-controlled and unverified, so we only
+     * ever reuse an existing account that is ITSELF a guest author (a profile
+     * flagged is_guest). A match on any other account — e.g. a staff/admin whose
+     * email was guessed — is refused; the draft is attributed to the neutral
+     * default author instead. This prevents authorship spoofing / borrowing a
+     * credentialed author's identity and E-E-A-T.
+     */
     protected function resolveGuestAuthor(GuestBlogRequest $request): ?int
     {
         $userModel = config('blog-cms.models.user');
         $user = $userModel::where('email', $request->email)->first();
 
-        if (! $user && config('blog-cms.guest_blogging.auto_create_author', true)) {
-            try {
-                $user = new $userModel();
-                $user->forceFill([
-                    'name' => $request->name,
-                    'email' => $request->email,
-                    'password' => Hash::make(Str::random(40)), // unguessable — effectively no login
-                ])->save();
-            } catch (\Throwable $e) {
-                Log::warning('[blog-cms] guest author user creation failed', [
-                    'email' => $request->email,
-                    'error' => $e->getMessage(),
-                ]);
-                $user = null;
+        if ($user) {
+            $profile = BlogAuthorProfile::where('user_id', $user->getKey())->first();
+            if ($profile && $profile->is_guest) {
+                return (int) $user->getKey(); // a returning guest — safe to reuse
             }
-        }
 
-        if (! $user) {
+            Log::warning('[blog-cms] guest pitch email matches a non-guest account; attributing to the default author', [
+                'email' => $request->email,
+            ]);
+
             return (int) config('blog-cms.api.default_author_id', 1);
         }
 
-        $this->ensureAuthorProfile($user, $request);
+        if (! config('blog-cms.guest_blogging.auto_create_author', true)) {
+            return (int) config('blog-cms.api.default_author_id', 1);
+        }
+
+        try {
+            $user = new $userModel();
+            $user->forceFill([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make(Str::random(40)), // unguessable — effectively no login
+            ])->save();
+        } catch (\Throwable $e) {
+            Log::warning('[blog-cms] guest author user creation failed', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return (int) config('blog-cms.api.default_author_id', 1);
+        }
+
+        $this->createGuestProfile($user, $request);
 
         return (int) $user->getKey();
     }
 
-    /** Give the guest a (non-indexable) BlogAuthorProfile if they don't have one. */
-    protected function ensureAuthorProfile(Model $user, GuestBlogRequest $request): void
+    /** Create the (non-indexable) guest BlogAuthorProfile, flagged is_guest. */
+    protected function createGuestProfile(Model $user, GuestBlogRequest $request): void
     {
         if (BlogAuthorProfile::where('user_id', $user->getKey())->exists()) {
             return;
@@ -155,6 +176,7 @@ class GuestBlogService
             'display_name' => $request->name,
             'role' => 'Guest Contributor',
             'is_indexable' => false, // thin profile stays noindex until fleshed out
+            'is_guest' => true,      // only these are ever reused by the guest flow
         ]);
     }
 
