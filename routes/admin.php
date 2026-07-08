@@ -8,6 +8,8 @@ use BlogCms\Http\Controllers\Admin\BlogPostFaqController;
 use BlogCms\Http\Controllers\Admin\BlogPostTopicController;
 use BlogCms\Http\Controllers\Admin\BlogAuthorProfileController;
 use BlogCms\Http\Controllers\Admin\BlogRedirectController;
+use BlogCms\Http\Controllers\Admin\BlogLinkController;
+use BlogCms\Http\Controllers\Admin\BlogLinkListController;
 use BlogCms\Http\Controllers\Admin\BlogPostHookController;
 use BlogCms\Http\Controllers\Admin\BlogPostHowToStepController;
 use BlogCms\Http\Controllers\Admin\DashboardController;
@@ -23,6 +25,16 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::resource('posts', BlogPostController::class);
     Route::resource('redirects', BlogRedirectController::class)->except(['show']);
     Route::resource('authors', BlogAuthorProfileController::class)->except(['show'])->parameters(['authors' => 'author']);
+
+    // Link lists (e.g. footer) + their links.
+    Route::resource('link-lists', BlogLinkListController::class)->except(['show'])->parameters(['link-lists' => 'linkList']);
+    Route::prefix('link-lists/{linkList}/links')->name('link-lists.links.')->group(function () {
+        Route::get('/create', [BlogLinkController::class, 'create'])->name('create');
+        Route::post('/', [BlogLinkController::class, 'store'])->name('store');
+        Route::get('/{link}/edit', [BlogLinkController::class, 'edit'])->name('edit');
+        Route::put('/{link}', [BlogLinkController::class, 'update'])->name('update');
+        Route::delete('/{link}', [BlogLinkController::class, 'destroy'])->name('destroy');
+    });
     Route::prefix('posts/{post}/faqs')->name('posts.faqs.')->group(function () {
         Route::get('/', [BlogPostFaqController::class, 'index'])->name('index');
         Route::post('/', [BlogPostFaqController::class, 'store'])->name('store');

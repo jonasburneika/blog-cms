@@ -425,6 +425,20 @@ created, attributed to a guest author → editor reviews & publishes it in the n
 > matches any other account (e.g. a staff/admin), the draft is attributed to the default author, never
 > to that account — so a guest post can't borrow a credentialed author's identity or E-E-A-T.
 
+## Link lists (footer & co.)
+
+Manage named lists of links (e.g. a **footer**) under **Link Lists** in the admin. Each link has a
+**translatable anchor**, points at a **blog post**, a **blog category** (via the shared page picker),
+or an **external URL**, and has a **target** (`_self`/`_blank`/`_parent`/`_top`) + optional `rel`.
+
+- Render in your theme by key: `<x-blog::link-list key="footer" class="footer__links" />`, or fetch the
+  data with `BlogLinkList::forKey('footer')` → `$list->activeLinks`.
+- `BlogLink` resolves internal targets through `PageUrl` (locale-aware). Inactive links and **dead
+  internal targets** (a deleted post/category) are skipped when rendered; external `_blank` links get
+  `rel="noopener noreferrer"` automatically unless you set `rel` explicitly.
+- Tables: `blog_link_lists` (`key`, `name`, `sort_order`) and `blog_links` (translatable `label`,
+  `link_type`/`link_id` **or** `url`, `target`, `rel`, `sort_order`, `is_active`).
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:

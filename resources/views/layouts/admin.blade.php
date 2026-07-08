@@ -116,6 +116,16 @@
                         Redirects
                     </a>
 
+                    {{-- Link Lists --}}
+                    <a href="{{ route('admin.link-lists.index') ?? '#' }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                              {{ request()->routeIs('admin.link-lists.*') ? 'bg-warm-400/20 text-earth-700 dark:text-warm-300 dark:bg-warm-500/15' : 'text-sand-700 dark:text-sand-300 hover:bg-sand-200 dark:hover:bg-neutral-700 hover:text-warm-800 dark:hover:text-warm-200' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m8.485-8.485l-1.5 1.5m4.328 1.328a4 4 0 00-5.656 0l-1.5 1.5"/>
+                        </svg>
+                        Link Lists
+                    </a>
+
                     {{-- Authors --}}
                     <a href="{{ route('admin.authors.index') ?? '#' }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
