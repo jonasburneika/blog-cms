@@ -16,9 +16,18 @@ class RobotsController extends Controller
         $lines = ['User-agent: *'];
 
         $disallow = (array) config('blog-cms.robots_txt.disallow', []);
-        if ($disallow) {
+        $queryParams = (array) config('blog-cms.robots_txt.disallow_query_params', []);
+
+        if ($disallow || $queryParams) {
             foreach ($disallow as $path) {
                 $lines[] = 'Disallow: '.$path;
+            }
+
+            // Keep search + tag URLs (?q=…) out of the crawl — as the first param
+            // (?q=) and as a later param (&q=).
+            foreach ($queryParams as $param) {
+                $lines[] = 'Disallow: /*?'.$param.'=';
+                $lines[] = 'Disallow: /*&'.$param.'=';
             }
         } else {
             $lines[] = 'Allow: /';

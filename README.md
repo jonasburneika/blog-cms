@@ -362,9 +362,12 @@ response headers use — so the header and the meta tag never disagree.
 ### robots.txt
 
 The package serves `GET /robots.txt` (config `blog-cms.robots_txt`, on by default) — it disallows
-`admin`/`login`/`register`/guest-submit paths and points at your sitemap. **A static
-`public/robots.txt` is served by the web server first and wins**, so delete it (Laravel ships a
-default one) to use the generated version, or set `robots_txt.enabled = false` and keep your own.
+`admin`/`login`/`register`/guest-submit paths, keeps **search + tag URLs out of the crawl**
+(`disallow_query_params`, default `['q']` → `Disallow: /*?q=` + `Disallow: /*&q=`, since tag links
+point at the search with the tag as `q`), and points at your sitemap. Those `?q=` pages are also
+`noindex` via the response header, so they're covered both ways. **A static `public/robots.txt` is
+served by the web server first and wins**, so delete it (Laravel ships a default one) to use the
+generated version, or set `robots_txt.enabled = false` and keep your own.
 
 ## Social share buttons
 

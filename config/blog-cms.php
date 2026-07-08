@@ -285,6 +285,13 @@ return [
         'enabled' => true,
         'sitemap_url' => null, // null = url('/sitemap.xml')
         'disallow' => ['/admin', '/login', '/register', '/guest-blog/submit'],
+
+        // Query parameters whose URLs should not be crawled. Rendered as
+        // `Disallow: /*?param=` + `Disallow: /*&param=` (matches the param first
+        // or later in the query string). `q` covers both site search (?q=…) and
+        // tag browsing, since tag links point at the search with the tag as `q`.
+        'disallow_query_params' => ['q'],
+
         'extra' => [],         // additional raw lines appended to the body
     ],
 
