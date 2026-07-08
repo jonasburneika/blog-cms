@@ -452,6 +452,47 @@ or an **external URL**, and has a **target** (`_self`/`_blank`/`_parent`/`_top`)
 - Tables: `blog_link_lists` (`key`, `name`, `sort_order`) and `blog_links` (translatable `label`,
   `link_type`/`link_id` **or** `url`, `target`, `rel`, `sort_order`, `is_active`).
 
+## Front-end example: homepage + footer
+
+The package is headless — you own the theme — but the content-block and link-list components drop
+straight into your Blade. A homepage with editor copy **before and after** the featured posts:
+
+```blade
+{{-- resources/views/home.blade.php (your app) --}}
+@extends('layouts.app')
+
+@section('content')
+    <x-blog::content-block key="homepage_before_featured" class="prose mx-auto my-8" />
+
+    <section class="featured-posts">
+        @foreach($featuredPosts as $post)   {{-- your own query, e.g. BlogPost::readable()->where('is_featured', true) --}}
+            <article>
+                <a href="{{ \BlogCms\Support\PageUrl::urlFor($post) }}">{{ $post->title }}</a>
+            </article>
+        @endforeach
+    </section>
+
+    <x-blog::content-block key="homepage_after_featured" class="prose mx-auto my-8" />
+@endsection
+```
+
+A footer that renders the managed **footer** link list (create a list with key `footer` in the admin,
+add its links, then):
+
+```blade
+{{-- resources/views/partials/footer.blade.php (your app) --}}
+<footer class="site-footer">
+    <nav aria-label="Footer">
+        <x-blog::link-list key="footer" class="site-footer__links" />
+    </nav>
+    <p class="site-footer__copy">&copy; {{ now()->year }} {{ \BlogCms\Models\Setting::get('site_name', config('app.name')) }}</p>
+</footer>
+```
+
+Both components render **nothing** when the block/list is missing, inactive, or empty, so they're safe
+to leave in the template before you've created the content. Style the emitted classes
+(`blog-content-block__*`, `blog-link-list__*`) — or pass your own via `class="…"` — in your theme.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:
