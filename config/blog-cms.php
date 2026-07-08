@@ -292,6 +292,12 @@ return [
         // tag browsing, since tag links point at the search with the tag as `q`.
         'disallow_query_params' => ['q'],
 
+        // Paths still crawlable (so the Sitemap: line works) but served with
+        // `X-Robots-Tag: noindex` so they never show up as a search result. The
+        // sitemap is referenced in robots.txt for bots but not "public". Supports
+        // wildcards (Str::is / Request::is patterns).
+        'noindex_paths' => ['sitemap*.xml'],
+
         'extra' => [],         // additional raw lines appended to the body
     ],
 

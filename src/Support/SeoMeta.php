@@ -23,6 +23,14 @@ class SeoMeta
             return 'noindex, nofollow';
         }
 
+        // Sitemaps: referenced from robots.txt for crawlers, but kept out of the
+        // search index (they should never appear as a result). Still crawlable.
+        foreach ((array) config('blog-cms.robots_txt.noindex_paths', []) as $pattern) {
+            if ($pattern !== '' && $request->is($pattern)) {
+                return 'noindex, follow';
+            }
+        }
+
         if ($request->filled(config('blog-cms.search.query_param', 'q'))) {
             return 'noindex, follow';
         }

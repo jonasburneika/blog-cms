@@ -369,6 +369,13 @@ point at the search with the tag as `q`), and points at your sitemap. Those `?q=
 served by the web server first and wins**, so delete it (Laravel ships a default one) to use the
 generated version, or set `robots_txt.enabled = false` and keep your own.
 
+The **sitemap** is referenced by the `Sitemap:` line (config `robots_txt.sitemap_url`, default
+`url('/sitemap.xml')`) so crawlers find it, but it's kept **out of the search index**: paths in
+`robots_txt.noindex_paths` (default `sitemap*.xml`) are served with `X-Robots-Tag: noindex` — still
+crawlable, never a public search result. (This only applies if the sitemap is a Laravel route, which
+it is when you serve it via `SitemapBuilder`; a static `public/sitemap.xml` needs the header set at
+the web-server level.)
+
 ## Social share buttons
 
 `<x-blog::share-buttons :post="$post" />` renders post share buttons that **append UTM parameters** to
