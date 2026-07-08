@@ -56,6 +56,30 @@
                     @enderror
                 </div>
 
+                {{-- OG Title --}}
+                <div class="mb-5">
+                    <label for="og_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">OG Title (Facebook / LinkedIn)</label>
+                    <input type="text" name="og_title" id="og_title" value="{{ old('og_title') }}"
+                           class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                           placeholder="Open Graph title for shared links">
+                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Falls back to Meta Title, then Title, if empty.</p>
+                    @error('og_title')
+                        <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Twitter / X Title --}}
+                <div class="mb-5">
+                    <label for="twitter_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Twitter / X Title</label>
+                    <input type="text" name="twitter_title" id="twitter_title" value="{{ old('twitter_title') }}"
+                           class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                           placeholder="Twitter / X card title">
+                    <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Falls back to OG Title, then Meta Title, then Title.</p>
+                    @error('twitter_title')
+                        <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 {{-- Parent Category --}}
                 @include('blog::admin.categories.partials.parent-select', [
                     'parentOptions' => $parentOptions,

@@ -367,6 +367,28 @@
                         @enderror
                     </div>
 
+                    {{-- OG Title --}}
+                    <div class="mb-5">
+                        <label for="og_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">OG Title (Facebook / LinkedIn)</label>
+                        <input type="text" name="og_title" id="og_title" value="{{ $tv('og_title') }}"
+                               class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                               placeholder="Open Graph title (falls back to Meta Title, then Title)">
+                        @error('og_title')
+                            <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Twitter / X Title --}}
+                    <div class="mb-5">
+                        <label for="twitter_title" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Twitter / X Title</label>
+                        <input type="text" name="twitter_title" id="twitter_title" value="{{ $tv('twitter_title') }}"
+                               class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition"
+                               placeholder="Twitter / X card title (falls back to OG Title, then Meta Title, then Title)">
+                        @error('twitter_title')
+                            <p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     <div class="mb-5">
                         <label for="meta_description" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Meta Description</label>
                         <textarea name="meta_description" id="meta_description" rows="3"

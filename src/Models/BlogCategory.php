@@ -26,6 +26,8 @@ class BlogCategory extends Model implements HasMedia
         'slug',
         'description',
         'meta_title',
+        'og_title',
+        'twitter_title',
     ];
 
     protected $fillable = [
@@ -35,6 +37,8 @@ class BlogCategory extends Model implements HasMedia
         'slug',
         'description',
         'meta_title',
+        'og_title',
+        'twitter_title',
         'status',
         'sort_order',
     ];
