@@ -19,8 +19,12 @@ use Throwable;
  * Handles remote URLs (downloaded) and base64 data-URIs (decoded). Idempotent:
  * an image already stored locally is left alone, and re-sending the same source
  * URL reuses the existing media (matched via the `source_url` custom property),
- * so repeated API saves never duplicate files. Also stamps loading="lazy" and
- * width/height to help layout stability.
+ * so repeated API saves never duplicate files.
+ *
+ * Regardless of ingestion, every content `<img>` — including the fallback image
+ * inside a `<picture>` — is stamped with loading="lazy" and decoding="async"
+ * (unless the author set them), and ingested images also get intrinsic
+ * width/height, to reduce layout shift and defer off-screen loads.
  */
 class ContentImageIngestor
 {
@@ -41,26 +45,36 @@ class ContentImageIngestor
         [$byUrl, $bySource] = $this->indexExistingMedia($model, $collection);
         $changed = false;
 
+        // The remote-fetch/base64 ingestion is toggleable; the lazy-loading pass
+        // below always runs so images are deferred regardless of that setting.
+        $ingestEnabled = (bool) config('blog-cms.media.ingest_content_images', true);
+
         foreach ((new DOMXPath($doc))->query('//img') as $img) {
             if (! $img instanceof DOMElement) {
                 continue;
             }
 
             $src = trim($img->getAttribute('src'));
-            if ($src === '' || isset($byUrl[$src])) {
-                continue; // empty, or already a stored media URL for this model
+
+            // 1) Ingest remote/base64 images into MediaLibrary and rewrite src.
+            //    Skip empty srcs and images already stored locally for this model.
+            if ($ingestEnabled && $src !== '' && ! isset($byUrl[$src])) {
+                // Previously ingested from this exact source → reuse, don't refetch.
+                $media = $bySource[$src] ?? $this->store($model, $collection, $src);
+                if ($media) {
+                    $bySource[$src] = $media;
+                    $byUrl[$media->getUrl()] = true;
+                    $img->setAttribute('src', $media->getUrl());
+                    $this->applyDimensions($img, $media);
+                    $changed = true;
+                }
             }
 
-            // Previously ingested from this exact source → reuse, don't refetch.
-            $media = $bySource[$src] ?? $this->store($model, $collection, $src);
-            if (! $media) {
-                continue;
+            // 2) Stamp lazy-loading on EVERY image — ingested, already-local, or a
+            //    relative/app path — including the <img> fallback inside <picture>.
+            if ($this->lazyLoad($img)) {
+                $changed = true;
             }
-
-            $bySource[$src] = $media;
-            $byUrl[$media->getUrl()] = true;
-            $this->applyMedia($img, $media);
-            $changed = true;
         }
 
         return $changed ? $this->save($doc) : $html;
@@ -166,24 +180,43 @@ class ContentImageIngestor
         };
     }
 
-    protected function applyMedia(DOMElement $img, mixed $media): void
+    /**
+     * Lazy-loading hints applied to every content image (browser-native lazy
+     * load + async decode), only when the author hasn't set them explicitly.
+     * Returns whether anything changed so the caller knows to re-save.
+     */
+    protected function lazyLoad(DOMElement $img): bool
     {
-        $img->setAttribute('src', $media->getUrl());
+        $changed = false;
 
         if (! $img->hasAttribute('loading')) {
             $img->setAttribute('loading', 'lazy');
+            $changed = true;
         }
 
-        if (! $img->hasAttribute('width') || ! $img->hasAttribute('height')) {
-            try {
-                $size = @getimagesize($media->getPath());
-                if ($size) {
-                    $img->setAttribute('width', (string) $size[0]);
-                    $img->setAttribute('height', (string) $size[1]);
-                }
-            } catch (Throwable) {
-                // dimensions are best-effort
+        if (! $img->hasAttribute('decoding')) {
+            $img->setAttribute('decoding', 'async');
+            $changed = true;
+        }
+
+        return $changed;
+    }
+
+    /** Best-effort intrinsic width/height (from the stored file) to cut layout shift. */
+    protected function applyDimensions(DOMElement $img, mixed $media): void
+    {
+        if ($img->hasAttribute('width') && $img->hasAttribute('height')) {
+            return;
+        }
+
+        try {
+            $size = @getimagesize($media->getPath());
+            if ($size) {
+                $img->setAttribute('width', (string) $size[0]);
+                $img->setAttribute('height', (string) $size[1]);
             }
+        } catch (Throwable) {
+            // dimensions are best-effort
         }
     }
 

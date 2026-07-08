@@ -9,9 +9,14 @@ use Spatie\MediaLibrary\HasMedia;
 
 /**
  * After a post is saved, pull any inline content images into MediaLibrary and
- * rewrite the HTML to the stored URLs — for every locale. Runs on `saved` (the
- * model has an id, so media can attach), then refreshes the table of contents
- * from the final HTML and persists via saveQuietly (no event re-entry).
+ * rewrite the HTML to the stored URLs, and lazy-load every content image — for
+ * every locale. Runs on `saved` (the model has an id, so media can attach), then
+ * refreshes the table of contents from the final HTML and persists via
+ * saveQuietly (no event re-entry).
+ *
+ * The lazy-loading pass runs even when image ingestion is disabled
+ * (config media.ingest_content_images) — that toggle only affects the
+ * remote/base64 fetch, handled inside the ingestor.
  *
  * Covers all save paths (token API, admin, programmatic) in one place.
  */
@@ -21,7 +26,7 @@ class ContentImageObserver
 
     public function saved(Model $post): void
     {
-        if (! config('blog-cms.media.ingest_content_images', true) || ! $post instanceof HasMedia) {
+        if (! $post instanceof HasMedia) {
             return;
         }
 

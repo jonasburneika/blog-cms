@@ -215,13 +215,18 @@ Two mechanisms:
 - **Inline content images (auto-ingested):** when a post is saved, `ContentImageIngestor` (via a
   `saved` observer) pulls every `<img>` in the body into the post's **`content`** MediaLibrary
   collection — downloading remote URLs and decoding base64 data-URIs — and rewrites each `src` to
-  the stored media URL, adding `loading="lazy"` and `width`/`height`. This runs for **every save
-  path** (token API, admin, programmatic) and **per locale**.
+  the stored media URL, adding intrinsic `width`/`height`. This runs for **every save path** (token
+  API, admin, programmatic) and **per locale**.
 
-  It's idempotent: already-local URLs are skipped, and re-sending the same source URL reuses the
-  stored file (matched by a `source_url` custom property), so repeated API updates never duplicate
-  media. The TOC/rendered HTML are refreshed from the final markup. Disable with
-  `config('blog-cms.media.ingest_content_images', false)`.
+  **Lazy-loading is applied to _every_ content image**, not just ingested ones: on save, each
+  `<img>` — including the fallback image inside a `<picture>` — is stamped with `loading="lazy"`
+  and `decoding="async"` unless the author already set those attributes. So already-local images
+  and relative/app paths (which aren't re-fetched) still get lazy-loaded.
+
+  It's idempotent: already-local URLs are skipped for ingestion, and re-sending the same source URL
+  reuses the stored file (matched by a `source_url` custom property), so repeated API updates never
+  duplicate media (nor re-stamp attributes already present). The TOC/rendered HTML are refreshed
+  from the final markup. Disable ingestion with `config('blog-cms.media.ingest_content_images', false)`.
 
   > So the API can post content HTML with plain external image URLs (or base64) and the images end
   > up hosted in MediaLibrary automatically. Downloads are synchronous on save — queue MediaLibrary
