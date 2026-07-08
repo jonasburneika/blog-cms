@@ -70,8 +70,8 @@ class BlogAuthorProfileController extends Controller
         $validated = $this->validateData($request, $author);
         $locale = $this->editingLocale($request);
 
+        // user_id is fixed once a profile exists — never silently re-assign it.
         $author->fill([
-            'user_id' => $validated['user_id'],
             'display_name' => $validated['display_name'] ?? null,
             'role' => $validated['role'] ?? null,
             'social_links' => $this->cleanLinks($request),

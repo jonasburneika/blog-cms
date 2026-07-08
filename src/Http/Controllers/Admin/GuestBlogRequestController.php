@@ -4,10 +4,13 @@ namespace BlogCms\Http\Controllers\Admin;
 
 use BlogCms\Http\Controllers\Controller;
 use BlogCms\Models\GuestBlogRequest;
+use BlogCms\Services\GuestBlogService;
 use Illuminate\Http\Request;
 
 class GuestBlogRequestController extends Controller
 {
+    public function __construct(protected GuestBlogService $service) {}
+
     public function index(Request $request)
     {
         $guestRequests = GuestBlogRequest::query()
@@ -23,19 +26,17 @@ class GuestBlogRequestController extends Controller
 
     public function show(GuestBlogRequest $guestBlogRequest)
     {
-        return view('blog::admin.guest-requests.show', compact('guestBlogRequest'));
+        // The view reads $guestRequest (matches the index's naming).
+        return view('blog::admin.guest-requests.show', ['guestRequest' => $guestBlogRequest]);
     }
 
     public function approve(Request $request, GuestBlogRequest $guestBlogRequest)
     {
-        $guestBlogRequest->update([
-            'status' => 'approved',
-            'reviewed_at' => now(),
-            'reviewed_by' => $request->user()->id,
-        ]);
+        // Mints the tokenized submit link + notifies the guest (idempotent).
+        $this->service->approve($guestBlogRequest, $request->user()->id);
 
         return redirect()->route('admin.guest-requests.index')
-            ->with('success', 'Guest blog request approved successfully.');
+            ->with('success', 'Pitch approved — the guest has been emailed a link to submit their article.');
     }
 
     public function reject(Request $request, GuestBlogRequest $guestBlogRequest)
@@ -44,12 +45,7 @@ class GuestBlogRequestController extends Controller
             'admin_notes' => 'nullable|string',
         ]);
 
-        $guestBlogRequest->update([
-            'status' => 'rejected',
-            'admin_notes' => $validated['admin_notes'] ?? null,
-            'reviewed_at' => now(),
-            'reviewed_by' => $request->user()->id,
-        ]);
+        $this->service->reject($guestBlogRequest, $request->user()->id, $validated['admin_notes'] ?? null);
 
         return redirect()->route('admin.guest-requests.index')
             ->with('success', 'Guest blog request rejected.');

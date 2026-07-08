@@ -94,6 +94,26 @@
                         </div>
                     @endif
 
+                    {{-- Guest submission status (flow B) --}}
+                    @if($guestRequest->awaitingSubmission())
+                        <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                            <label class="block text-xs font-medium text-amber-700 dark:text-amber-300 uppercase tracking-wider mb-1">Awaiting article</label>
+                            <p class="text-sm text-amber-800 dark:text-amber-300 mb-2">The guest has been emailed this private submission link:</p>
+                            <code class="block px-3 py-2 bg-white dark:bg-neutral-900 border border-amber-200 dark:border-amber-800 rounded text-xs font-mono break-all select-all">{{ $guestRequest->submitUrl() }}</code>
+                        </div>
+                    @elseif($guestRequest->hasDraft())
+                        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center justify-between gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wider mb-1">Draft created</label>
+                                <p class="text-sm text-green-800 dark:text-green-300">Article submitted{{ $guestRequest->submitted_at ? ' '.$guestRequest->submitted_at->diffForHumans() : '' }} — review &amp; publish the draft.</p>
+                            </div>
+                            <a href="{{ route('admin.posts.edit', $guestRequest->created_post_id) }}"
+                               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition whitespace-nowrap">
+                                Open draft
+                            </a>
+                        </div>
+                    @endif
+
                     {{-- Review Info --}}
                     @if($guestRequest->status !== 'pending')
                         <hr class="border-warm-200 dark:border-neutral-700">
@@ -135,6 +155,7 @@
                                 {{-- Approve Button --}}
                                 <form method="POST" action="{{ route('admin.guest-requests.approve', $guestRequest) }}">
                                     @csrf
+                                    @method('PUT')
                                     <button type="submit"
                                             class="inline-flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">
                                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,6 +213,7 @@
 
                     <form method="POST" action="{{ route('admin.guest-requests.reject', $guestRequest) }}">
                         @csrf
+                        @method('PUT')
                         <div class="mb-5">
                             <label for="admin_notes" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Admin Notes</label>
                             <textarea name="admin_notes" id="admin_notes" rows="4"

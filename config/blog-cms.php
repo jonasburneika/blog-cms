@@ -205,4 +205,47 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Guest blogging
+    |--------------------------------------------------------------------------
+    | Two-step public guest blogging: a visitor pitches an article; an editor
+    | approves the pitch, which emails the guest a tokenized link to submit the
+    | full article; the submission creates a DRAFT post attributed to a guest
+    | author for the editor to review + publish. Guests never touch /admin.
+    */
+    'guest_blogging' => [
+        'enabled' => (bool) env('BLOG_CMS_GUEST_BLOGGING', false),
+
+        // Public route prefix. Pitch: /{prefix}; submit: /{prefix}/submit/{token}.
+        'route_prefix' => 'guest-blog',
+
+        // Rate limit for the public pitch/submit endpoints ("max,minutes").
+        'throttle' => '5,1',
+
+        // Status the created post lands in (draft, so the editor reviews it).
+        'default_status' => \BlogCms\Models\BlogPost::STATUS_DRAFT,
+
+        // Resolve/create a locked guest-author user + BlogAuthorProfile (reused
+        // by email). When false, or if user creation fails, posts fall back to
+        // the API default author (blog-cms.api.default_author_id).
+        'auto_create_author' => true,
+
+        // Send the config-gated approval/rejection mailables (events always fire).
+        'notify' => true,
+
+        // Fallback category for the draft when the pitch's category_preference
+        // doesn't match one (null = first category).
+        'default_category_id' => null,
+
+        // Allowlist of HTML tags kept when sanitizing guest-submitted content
+        // before it is ever rendered. Everything else is unwrapped/stripped;
+        // scripts, event handlers and javascript: URLs are always removed.
+        'allowed_html' => [
+            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
+            'blockquote', 'h2', 'h3', 'h4', 'figure', 'figcaption', 'img',
+            'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        ],
+    ],
+
 ];

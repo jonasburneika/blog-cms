@@ -15,16 +15,21 @@
         @if($isEdit) @method('PUT') @endif
         <input type="hidden" name="locale" value="{{ $locale }}">
 
-        {{-- User --}}
+        {{-- User (fixed after creation) --}}
         <div class="mb-5">
             <label for="user_id" class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">User</label>
-            <select name="user_id" id="user_id"
-                    class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition">
+            <select name="user_id" id="user_id" {{ $isEdit ? 'disabled' : '' }}
+                    class="w-full px-4 py-2.5 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition {{ $isEdit ? 'opacity-60 cursor-not-allowed' : '' }}">
                 <option value="">— Select a user —</option>
                 @foreach($users as $u)
                     <option value="{{ $u->id }}" {{ (string) $userId === (string) $u->id ? 'selected' : '' }}>{{ $u->name }} — {{ $u->email }}</option>
                 @endforeach
             </select>
+            @if($isEdit)
+                {{-- disabled selects don't submit; carry the value so validation passes (the controller ignores it anyway) --}}
+                <input type="hidden" name="user_id" value="{{ $userId }}">
+                <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">The linked user can't be changed after the profile is created.</p>
+            @endif
             @error('user_id')<p class="mt-1.5 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
         </div>
 

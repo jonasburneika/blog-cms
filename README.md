@@ -387,6 +387,39 @@ Posts carry a `likes_count` column, surfaced in the Article JSON-LD as
 `https://schema.org/UserLikes`. The app owns the actual "like" action/endpoint; core just stores the
 count and renders the structured data.
 
+## Guest blogging (end-to-end, two-step)
+
+A non-technical guest can go from a pitch to a published article without ever touching `/admin`.
+Enable with `config('blog-cms.guest_blogging.enabled')` (env `BLOG_CMS_GUEST_BLOGGING`).
+
+**Flow:** guest submits a **pitch** → editor **approves** (mints a token + emails the guest a private
+`/{prefix}/submit/{token}` link) → guest **submits the full article** → a **draft** `BlogPost` is
+created, attributed to a guest author → editor reviews & publishes it in the normal posts admin.
+
+- **Public endpoints** (registered only when enabled, write routes **throttled**, name prefix
+  `blog.guest.`): `GET/POST /guest-blog` (pitch) and `GET/POST /guest-blog/submit/{token}` (article),
+  via `GuestBlogController` + `GuestPitchRequest`/`GuestArticleRequest`. Each form has a **honeypot**
+  (`website` field, must stay empty). Minimal Blade views (`blog::guest-blog.*`) extend your
+  front-end layout (`blog-cms.frontend.layout`) and are publishable/overridable.
+- **`GuestBlogService`** does the work: `approve()` (mint token + `GuestPostApproved` event +
+  config-gated `GuestPitchApprovedMail`), `reject()` (`GuestPostRejected` + mail, creates nothing),
+  and `createDraftFromSubmission()` — resolve/create a **locked guest-author user** (reused by email)
+  + `BlogAuthorProfile`, create the draft in the mapped category, and run the **normal save pipeline**
+  (TOC, content-image ingest, srcset). Falls back to `api.default_author_id` if user creation is off
+  or fails.
+- **Idempotent & safe:** approving is a no-op if already approved; a submission won't create a second
+  post (`created_post_id` guards it); guest HTML is **sanitized against an allowlist**
+  (`BlogCms\Support\HtmlSanitizer`, config `guest_blogging.allowed_html`) — scripts, event handlers
+  and `javascript:` URLs are stripped — before it is ever rendered.
+- **Audit:** `guest_blog_requests` gains `title`/`content`/`excerpt`/`locale`, `submit_token`/
+  `submitted_at`, and `created_post_id`/`created_user_id`. The cover is a MediaLibrary `cover`
+  collection copied onto the post. In the admin request page you get the submit link (to re-share) and
+  an **Open draft** button once submitted.
+
+> Creating guest-author **users** writes to the app's `users` table (name/email + an unguessable
+> password → effectively no login). Turn it off with `guest_blogging.auto_create_author = false` to
+> attribute drafts to `api.default_author_id` instead. Notifications require the app's mail config.
+
 ## What the consuming app must still provide
 
 Core is deliberately not 100% turnkey — a few things are the app's job by design:
