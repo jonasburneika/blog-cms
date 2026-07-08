@@ -301,4 +301,20 @@ return [
         'extra' => [],         // additional raw lines appended to the body
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | RSS feed
+    |--------------------------------------------------------------------------
+    | Serves an RSS 2.0 feed of the newest published posts at GET /{route} so
+    | readers can subscribe. <x-blog::seo-meta> advertises it via a
+    | <link rel="alternate" type="application/rss+xml"> autodiscovery tag.
+    */
+    'rss' => [
+        'enabled' => true,
+        'route' => 'feed', // GET /feed ; null disables the route
+        'limit' => 20,
+        'title' => null,       // null → site_name setting
+        'description' => null, // null → site_description setting
+    ],
+
 ];

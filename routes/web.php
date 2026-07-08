@@ -1,5 +1,6 @@
 <?php
 
+use BlogCms\Http\Controllers\FeedController;
 use BlogCms\Http\Controllers\GuestBlogController;
 use BlogCms\Http\Controllers\RobotsController;
 use BlogCms\Http\Controllers\SearchController;
@@ -8,6 +9,11 @@ use Illuminate\Support\Facades\Route;
 // robots.txt (a static public/robots.txt, if present, is served first and wins).
 if (config('blog-cms.robots_txt.enabled')) {
     Route::get('robots.txt', RobotsController::class);
+}
+
+// RSS feed of the newest posts.
+if (config('blog-cms.rss.enabled') && ($feedRoute = config('blog-cms.rss.route'))) {
+    Route::get($feedRoute, FeedController::class)->name('blog.feed');
 }
 
 // Public search page: GET /search?q=… (name blog.search). Disabled when

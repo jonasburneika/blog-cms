@@ -203,6 +203,30 @@
                         @enderror
                     </div>
 
+                    {{-- Social media links --}}
+                    @php($socialLinks = old('social_media_links', $settings['general']['social_media_links'] ?? []))
+                    @if(empty($socialLinks)) @php($socialLinks = [['label' => '', 'url' => '']]) @endif
+                    <div class="mb-6" x-data="{ links: @js(array_values($socialLinks)) }">
+                        <label class="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5">Social media links</label>
+                        <p class="mb-2 text-xs text-stone-400 dark:text-stone-500">Where visitors can follow you (Facebook, Instagram, YouTube, X, …). Shown by <code>&lt;x-blog::social-links /&gt;</code> and used as Organization <code>sameAs</code>.</p>
+                        <template x-for="(link, i) in links" :key="i">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="text" x-model="link.label" :name="'social_media_links['+i+'][label]'" placeholder="Label (e.g. Instagram)"
+                                       class="w-1/3 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <input type="url" x-model="link.url" :name="'social_media_links['+i+'][url]'" placeholder="https://…"
+                                       class="flex-1 bg-warm-50 dark:bg-neutral-900 border border-warm-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm text-warm-900 dark:text-warm-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <button type="button" @click="links.splice(i, 1)" class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Remove">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        </template>
+                        <button type="button" @click="links.push({label:'',url:''})"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-stone-600 dark:text-stone-300 bg-stone-100 dark:bg-neutral-700 rounded-lg hover:bg-stone-200 dark:hover:bg-neutral-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Add social link
+                        </button>
+                    </div>
+
                     {{-- Save --}}
                     <div class="flex justify-end">
                         <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm transition focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-neutral-800">

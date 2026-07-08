@@ -32,6 +32,7 @@ class SettingController extends Controller
                 'homepage_meta_title' => Setting::get('homepage_meta_title', ''),
                 'homepage_meta_description' => Setting::get('homepage_meta_description', ''),
                 'blog_posts_per_page' => Setting::get('blog_posts_per_page', '12'),
+                'social_media_links' => Setting::get('social_media_links', []),
             ],
             'api' => [
                 'api_key' => Setting::get('api_key', ''),
@@ -84,6 +85,9 @@ class SettingController extends Controller
             'homepage_meta_title' => 'nullable|string|max:70',
             'homepage_meta_description' => 'nullable|string|max:200',
             'blog_posts_per_page' => 'nullable|integer|min:1|max:100',
+            'social_media_links' => 'nullable|array',
+            'social_media_links.*.label' => 'nullable|string|max:100',
+            'social_media_links.*.url' => 'nullable|url|max:2048',
         ]);
 
         Setting::set('site_name', $request->site_name, 'general');
@@ -91,6 +95,13 @@ class SettingController extends Controller
         Setting::set('homepage_meta_title', $request->homepage_meta_title, 'general');
         Setting::set('homepage_meta_description', $request->homepage_meta_description, 'general');
         Setting::set('blog_posts_per_page', $request->blog_posts_per_page, 'general');
+
+        // Site-wide social profiles (footer/header + Organization sameAs).
+        $social = array_values(array_filter(
+            (array) $request->input('social_media_links', []),
+            fn ($l) => ! empty($l['url']),
+        ));
+        Setting::set('social_media_links', $social, 'general', 'json');
 
         return redirect()->route('admin.settings.index', ['tab' => 'general'])
             ->with('success', 'General settings updated.');

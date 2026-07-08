@@ -392,6 +392,25 @@ email) + `utm_campaign` (config `sharing.campaign`, overridable per widget). Exa
 Theme-neutral — style the emitted `.blog-share*` classes. The small vanilla-JS handler is inlined
 once per page (event-delegated), strips any existing `utm_*` before tagging, and needs no build step.
 
+## Social profiles + RSS
+
+**Social profile links** — set the site's social media accounts under **Settings → General → Social
+media links** (label + URL). Render them anywhere (footer/header):
+
+```blade
+<x-blog::social-links class="footer__social" />
+```
+
+It emits a `<ul>` of `target="_blank" rel="noopener noreferrer me"` links (styled via `.blog-social*`),
+nothing when none are set. Stored in the settings table (`social_media_links`), so they're also handy
+as your Organization `sameAs`. Read directly with `BlogCms\Models\Setting::get('social_media_links')`.
+
+**RSS feed** — the package serves an RSS 2.0 feed of the newest published posts at **`GET /feed`**
+(config `blog-cms.rss` — route, `limit`, optional `title`/`description`, or disable) so readers can
+subscribe. `<x-blog::seo-meta>` advertises it with a `<link rel="alternate" type="application/rss+xml">`
+autodiscovery tag, so browsers/readers find it automatically. Items carry the title, link, `pubDate`,
+excerpt (`description`) and full HTML (`content:encoded`), in the current locale.
+
 ## Security headers
 
 `SecurityHeaders` (on the `web` group) adds a baseline set to every response, all configurable under

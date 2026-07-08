@@ -54,6 +54,9 @@
 @if($canonical)
 <link rel="canonical" href="{{ $canonical }}">
 @endif
+@if(config('blog-cms.rss.enabled') && config('blog-cms.rss.route'))
+<link rel="alternate" type="application/rss+xml" title="{{ $siteName }} RSS" href="{{ url(config('blog-cms.rss.route')) }}">
+@endif
 
 {{-- Open Graph --}}
 <meta property="og:type" content="{{ $type }}">
