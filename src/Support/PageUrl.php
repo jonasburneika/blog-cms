@@ -18,8 +18,9 @@ class PageUrl
 {
     public const TYPE_POST = 'post';
     public const TYPE_CATEGORY = 'category';
+    public const TYPE_PAGE = 'page';
 
-    public const TYPES = [self::TYPE_POST, self::TYPE_CATEGORY];
+    public const TYPES = [self::TYPE_POST, self::TYPE_CATEGORY, self::TYPE_PAGE];
 
     /**
      * Normalized path (no leading/trailing slash) for a type + id in a locale,
@@ -50,6 +51,17 @@ class PageUrl
             $slug = static::slug($model, $locale);
 
             return $slug === null ? null : static::join($prefix, $slug);
+        }
+
+        if (static::isPage($model)) {
+            $slug = static::slug($model, $locale);
+            if ($slug === null) {
+                return null;
+            }
+
+            $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
+
+            return static::join($prefix, $pagePrefix, $slug);
         }
 
         if (static::isPost($model)) {
@@ -108,6 +120,9 @@ class PageUrl
         if (static::isCategory($model)) {
             return self::TYPE_CATEGORY;
         }
+        if (static::isPage($model)) {
+            return self::TYPE_PAGE;
+        }
 
         return null;
     }
@@ -138,11 +153,20 @@ class PageUrl
             ->first();
     }
 
+    /** Resolve a localized single-segment slug to a page, or null. */
+    public static function pageBySlug(string $slug, string $locale): ?Model
+    {
+        $class = config('blog-cms.models.page');
+
+        return $class::query()->where("slug->{$locale}", $slug)->first();
+    }
+
     public static function modelClass(string $type): ?string
     {
         return match ($type) {
             self::TYPE_POST => config('blog-cms.models.post'),
             self::TYPE_CATEGORY => config('blog-cms.models.category'),
+            self::TYPE_PAGE => config('blog-cms.models.page'),
             default => null,
         };
     }
@@ -178,7 +202,15 @@ class PageUrl
             })
             ->sortBy('label')->values()->all();
 
-        return ['Categories' => $categories, 'Posts' => $posts];
+        $pageClass = config('blog-cms.models.page');
+        $pages = $pageClass::query()->get()
+            ->map(fn ($p) => [
+                'value' => self::TYPE_PAGE.':'.$p->getKey(),
+                'label' => (string) ($p->getTranslation('title', $default, true) ?: '#'.$p->getKey()),
+            ])
+            ->sortBy('label')->values()->all();
+
+        return ['Categories' => $categories, 'Posts' => $posts, 'Pages' => $pages];
     }
 
     /**
@@ -230,5 +262,10 @@ class PageUrl
     protected static function isCategory(Model $model): bool
     {
         return is_a($model, config('blog-cms.models.category'));
+    }
+
+    protected static function isPage(Model $model): bool
+    {
+        return is_a($model, config('blog-cms.models.page'));
     }
 }

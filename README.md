@@ -501,15 +501,32 @@ Conditions, Privacy Policy, Cookie Policy, About, etc. Title / slug / content / 
 **translatable**; the slug is auto-generated per locale from the title (override it if you like).
 Each page has a **draft/published** status and an `is_indexable` flag.
 
-Headless — **the app owns the route and template**. Resolve + render a page:
+**Pages are first-class URLs**, integrated into `PageUrl` alongside posts/categories: they appear in
+the page picker (canonical / link-list / redirect targets), in the **sitemap** (published + indexable),
+and get **automatic slug-change 301s** and delete-cleanup like posts/categories. `url_prefix` shapes
+the path — default `''` → `/{slug}` (root-level, shares the 1-segment space with categories, which
+win on a slug clash), or e.g. `page` → `/page/{slug}`.
+
+Headless — **the app owns the route and template**. Serve them from the same catch-all that resolves
+posts/categories (so they're reachable at their URL like any other page):
 
 ```php
-// routes/web.php (your app)
-Route::get('/{slug}', function (string $slug) {
-    $page = \BlogCms\Models\BlogPage::findPublished($slug) ?? abort(404);
-    return view('page', compact('page'));
-})->where('slug', '[a-z0-9-]+');
+// routes/web.php (your app) — resolve category / post / page from one catch-all
+Route::get('/{a}/{b?}', function (string $a, ?string $b = null) {
+    $locale = \BlogCms\Support\LocaleManager::current();
+    $entity = $b
+        ? \BlogCms\Support\PageUrl::postBySlug($a, $b, $locale)
+        : (\BlogCms\Support\PageUrl::categoryBySlug($a, $locale)
+            ?: \BlogCms\Support\PageUrl::pageBySlug($a, $locale));
+    abort_if(! $entity, 404);
+    // dispatch to the right template by type…
+    return $entity instanceof \BlogCms\Models\BlogPage
+        ? view('page', ['page' => $entity])
+        : /* your post/category views */ abort(404);
+})->where('a', '[a-z0-9-]+');
 ```
+
+Or a dedicated route: `\BlogCms\Models\BlogPage::findPublished($slug, $locale)`.
 
 ```blade
 {{-- resources/views/page.blade.php (your app) --}}
@@ -523,10 +540,10 @@ Route::get('/{slug}', function (string $slug) {
 ```
 
 `BlogPage::findPublished($slug, $locale)` looks up a published page by slug in the (current) locale.
-`pagePath()`/`pageUrl()` build the URL from `config('blog-cms.pages.url_prefix')` (default `''` →
-`/{slug}`; set e.g. `page` → `/page/{slug}`). Pass the page's `meta_title`/`meta_description` to
-`<x-blog::seo-meta>`, and honour `is_indexable` (render `<meta name="robots" content="noindex">` when
-false). Link them from the footer with a **link list** external URL pointing at `$page->pageUrl()`.
+`pagePath()`/`pageUrl()` build the URL from `config('blog-cms.pages.url_prefix')`. Pass the page's
+`meta_title`/`meta_description` to `<x-blog::seo-meta>`, and honour `is_indexable` (render
+`<meta name="robots" content="noindex">` when false). Because pages are in the page picker now, link
+them from the footer by choosing the page directly in a **link list** (no need for an external URL).
 
 ## Link lists (footer & co.)
 

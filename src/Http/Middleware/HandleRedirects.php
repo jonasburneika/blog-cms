@@ -67,13 +67,23 @@ class HandleRedirects
         return redirect()->away($target, $status);
     }
 
-    /** Resolve a locale-stripped path to a post (2 segments) or category (1). */
+    /** Resolve a locale-stripped path to a category (1 seg), post (2), or page. */
     protected function resolveEntity(string $path, string $locale): ?object
     {
         $segments = array_values(array_filter(explode('/', $path)));
+        $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
+
+        // Prefixed pages: {pagePrefix}/{slug}.
+        if ($pagePrefix !== '' && count($segments) === 2 && $segments[0] === $pagePrefix) {
+            if ($page = PageUrl::pageBySlug($segments[1], $locale)) {
+                return $page;
+            }
+        }
 
         return match (count($segments)) {
-            1 => PageUrl::categoryBySlug($segments[0], $locale),
+            // Root-level pages share the 1-segment space with categories → category wins.
+            1 => PageUrl::categoryBySlug($segments[0], $locale)
+                ?: ($pagePrefix === '' ? PageUrl::pageBySlug($segments[0], $locale) : null),
             2 => PageUrl::postBySlug($segments[0], $segments[1], $locale),
             default => null,
         };

@@ -78,6 +78,7 @@ class BlogCmsServiceProvider extends ServiceProvider
     {
         $postClass = config('blog-cms.models.post');
         $categoryClass = config('blog-cms.models.category');
+        $pageClass = config('blog-cms.models.page');
 
         $postClass::deleted(function (Model $post) {
             BlogRedirect::purgeReferences(PageUrl::TYPE_POST, $post->getKey());
@@ -87,10 +88,15 @@ class BlogCmsServiceProvider extends ServiceProvider
             BlogRedirect::purgeReferences(PageUrl::TYPE_CATEGORY, $category->getKey());
             BlogUrlHistory::purgeTarget(PageUrl::TYPE_CATEGORY, $category->getKey());
         });
+        $pageClass::deleted(function (Model $page) {
+            BlogRedirect::purgeReferences(PageUrl::TYPE_PAGE, $page->getKey());
+            BlogUrlHistory::purgeTarget(PageUrl::TYPE_PAGE, $page->getKey());
+        });
 
         // Record old URLs automatically when a published slug changes.
         $postClass::saved(fn (Model $post) => app(UrlHistoryRecorder::class)->recordPostChange($post));
         $categoryClass::saved(fn (Model $category) => app(UrlHistoryRecorder::class)->recordCategoryChange($category));
+        $pageClass::saved(fn (Model $page) => app(UrlHistoryRecorder::class)->recordPageChange($page));
 
         // Regenerate the per-locale table of contents when content changes.
         $postClass::observe(BlogPostTocObserver::class);

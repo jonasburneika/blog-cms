@@ -85,6 +85,32 @@ class UrlHistoryRecorder
         }
     }
 
+    /** A page's slug changed → record its old URL per locale. */
+    public function recordPageChange(Model $page): void
+    {
+        if (! $page->wasChanged('slug') || $page->status !== 'published') {
+            return;
+        }
+
+        $oldSlugs = $this->decodeOriginalSlug($page);
+        $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
+
+        foreach (LocaleManager::all() as $locale) {
+            $old = $oldSlugs[$locale] ?? null;
+            $new = $page->getTranslation('slug', $locale, false);
+            if (! $old || $old === $new) {
+                continue;
+            }
+
+            $this->store(
+                $this->join(LocaleManager::prefix($locale), $pagePrefix, $old),
+                PageUrl::TYPE_PAGE,
+                $page->getKey(),
+                $locale,
+            );
+        }
+    }
+
     /** Persist one old_path → target, guarding against self-loops and live shadows. */
     protected function store(string $oldPath, string $type, int|string $id, string $locale): void
     {

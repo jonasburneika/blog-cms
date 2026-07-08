@@ -15,6 +15,7 @@ return [
         'user'     => \App\Models\User::class,
         'post'     => \BlogCms\Models\BlogPost::class,
         'category' => \BlogCms\Models\BlogCategory::class,
+        'page'     => \BlogCms\Models\BlogPage::class,
     ],
 
     /*

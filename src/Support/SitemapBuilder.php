@@ -52,7 +52,28 @@ class SitemapBuilder
                     ->setPriority(0.7));
             });
 
+        static::addPages($sitemap);
+
         return $sitemap;
+    }
+
+    /** Add published, indexable simple pages (URLs resolved via PageUrl). */
+    protected static function addPages(Sitemap $sitemap): void
+    {
+        $pageClass = config('blog-cms.models.page');
+
+        $pageClass::query()
+            ->published()
+            ->where('is_indexable', true)
+            ->get()
+            ->each(function (Model $page) use ($sitemap) {
+                if ($url = PageUrl::urlFor($page)) {
+                    $sitemap->add(Url::create($url)
+                        ->setLastModificationDate($page->updated_at)
+                        ->setChangeFrequency(Url::CHANGE_FREQUENCY_YEARLY)
+                        ->setPriority(0.4));
+                }
+            });
     }
 
     /**
@@ -80,6 +101,13 @@ class SitemapBuilder
                     static::addLocalized($sitemap, $post, $locales, 0.7, Url::CHANGE_FREQUENCY_MONTHLY);
                 }
             });
+
+        $pageClass = config('blog-cms.models.page');
+        $pageClass::query()
+            ->published()
+            ->where('is_indexable', true)
+            ->get()
+            ->each(fn (Model $page) => static::addLocalized($sitemap, $page, $locales, 0.4, Url::CHANGE_FREQUENCY_YEARLY));
 
         return $sitemap;
     }
