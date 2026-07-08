@@ -165,7 +165,13 @@ class BlogPost extends Model implements HasMedia
         $contentCollection = config('blog-cms.media.content_collection', 'content');
         $maxWidth = (int) config('blog-cms.media.content_image.max_width', 1600);
 
-        $formats = \BlogCms\Support\ImageFormats::enabled();
+        // Width buckets are generated for the original content collection and for
+        // the ShortPixel-converted WebP/AVIF variant collections (content-webp,
+        // content-avif) — width-only, so each keeps its own format.
+        $collections = [$contentCollection];
+        foreach (\BlogCms\Support\ImageFormats::enabled() as $format) {
+            $collections[] = $contentCollection.'-'.$format;
+        }
 
         foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
             $width = (int) $width;
@@ -173,20 +179,10 @@ class BlogPost extends Model implements HasMedia
                 continue;
             }
 
-            // Original-format bucket (keeps the source's format).
             $this->addMediaConversion('content-'.$width)
                 ->width($width)
-                ->performOnCollections($contentCollection)
+                ->performOnCollections(...$collections)
                 ->nonQueued();
-
-            // Modern-format buckets (WebP/AVIF), served via <picture><source>.
-            foreach ($formats as $format) {
-                $this->addMediaConversion('content-'.$width.'-'.$format)
-                    ->width($width)
-                    ->format($format)
-                    ->performOnCollections($contentCollection)
-                    ->nonQueued();
-            }
         }
     }
 }

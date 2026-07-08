@@ -171,11 +171,10 @@ return [
             'sizes' => '(max-width: 768px) 100vw, 768px',
 
             // Modern output formats served via <picture><source> (original stays
-            // the <img> fallback). Generated as MediaLibrary conversions from the
-            // (ShortPixel-optimized) original. Admin "Image Optimization" tab
-            // overrides this. AVIF needs an imagick/gd build with AVIF support —
-            // enabling a format the driver can't produce will fail those
-            // conversions. Supported: 'webp', 'avif'.
+            // the <img> fallback). The conversion is done by ShortPixel (its
+            // `convertto`), so it needs ShortPixel enabled + a queue worker; no
+            // local imagick/AVIF support is required. The admin "Image
+            // Optimization" tab overrides this. Supported: 'webp', 'avif'.
             'formats' => [],
         ],
 

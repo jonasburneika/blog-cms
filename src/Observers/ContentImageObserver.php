@@ -2,7 +2,7 @@
 
 namespace BlogCms\Observers;
 
-use BlogCms\Jobs\OptimizeMediaWithShortPixel;
+use BlogCms\Jobs\OptimizePostImages;
 use BlogCms\Services\ContentImageIngestor;
 use BlogCms\Services\ShortPixelOptimizer;
 use BlogCms\Support\LocaleManager;
@@ -62,9 +62,9 @@ class ContentImageObserver
     }
 
     /**
-     * Queue a ShortPixel optimization job for each content image not yet
-     * optimized. The per-media flag makes this idempotent across saves, so only
-     * new images are ever dispatched.
+     * Queue a single ShortPixel optimization job for the post when it has any
+     * content image not yet optimized. The per-image `shortpixel_optimized` flag
+     * keeps this idempotent across saves.
      */
     protected function queueImageOptimization(HasMedia $post, string $collection): void
     {
@@ -72,14 +72,12 @@ class ContentImageObserver
             return;
         }
 
-        $queue = config('blog-cms.media.shortpixel.queue');
+        $hasPending = $post->getMedia($collection)
+            ->contains(fn ($media) => ! $media->getCustomProperty('shortpixel_optimized'));
 
-        foreach ($post->getMedia($collection) as $media) {
-            if ($media->getCustomProperty('shortpixel_optimized')) {
-                continue;
-            }
-
-            OptimizeMediaWithShortPixel::dispatch($media->id)->onQueue($queue);
+        if ($hasPending) {
+            OptimizePostImages::dispatch($post->getKey())
+                ->onQueue(config('blog-cms.media.shortpixel.queue'));
         }
     }
 }

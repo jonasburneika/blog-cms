@@ -44,6 +44,7 @@ class ContentImageIngestor
         }
 
         [$byUrl, $bySource] = $this->indexExistingMedia($model, $collection);
+        $variants = $this->indexVariants($model, $collection);
         $changed = false;
 
         // The remote-fetch/base64 ingestion is toggleable; the lazy-loading pass
@@ -78,7 +79,7 @@ class ContentImageIngestor
                 if ($this->applyResponsive($img, $media)) {
                     $changed = true;
                 }
-                if ($this->wrapInPicture($doc, $img, $media)) {
+                if ($this->wrapInPicture($doc, $img, $media, $variants)) {
                     $changed = true;
                 }
             }
@@ -305,14 +306,18 @@ class ContentImageIngestor
 
     /**
      * Wrap a stored content <img> in a <picture> with a <source> per enabled
-     * modern format (AVIF/WebP, preference order), each a width-bucket srcset.
-     * The original <img> stays as the last child (fallback). Idempotent: skipped
-     * when formats are off or the image is already inside a <picture>.
+     * modern format (AVIF/WebP, preference order), each a width-bucket srcset
+     * built from the ShortPixel-converted variant media. The original <img> stays
+     * as the last child (fallback). Idempotent: skipped when formats are off, the
+     * image is already inside a <picture>, or the variants don't exist yet (they
+     * are produced asynchronously by the ShortPixel job, which re-runs ingestion
+     * once they're stored).
+     *
+     * @param  array<string,array<int,mixed>>  $variants  [format => [sourceMediaId => variantMedia]]
      */
-    protected function wrapInPicture(DOMDocument $doc, DOMElement $img, mixed $media): bool
+    protected function wrapInPicture(DOMDocument $doc, DOMElement $img, mixed $media, array $variants): bool
     {
-        $formats = ImageFormats::enabled();
-        if (! $formats) {
+        if (! ImageFormats::enabled() || ! $variants) {
             return false;
         }
 
@@ -335,14 +340,19 @@ class ContentImageIngestor
         $sizes = (string) config('blog-cms.media.content_image.sizes', '100vw');
 
         $sources = [];
-        foreach ($formats as $format) {
+        foreach (ImageFormats::enabled() as $format) {
+            $variant = $variants[$format][$media->getKey()] ?? null;
+            if (! $variant) {
+                continue; // ShortPixel hasn't produced this format yet
+            }
+
             $entries = [];
             foreach (config('blog-cms.media.content_image.srcset_widths', []) as $width) {
                 $width = (int) $width;
                 if ($width < 1 || $width > $maxWidth || $width > $originalWidth) {
                     continue;
                 }
-                $entries[] = $media->getUrl('content-'.$width.'-'.$format).' '.$width.'w';
+                $entries[] = $variant->getUrl('content-'.$width).' '.$width.'w';
             }
             if (! $entries) {
                 continue;
@@ -367,6 +377,27 @@ class ContentImageIngestor
         $picture->appendChild($img); // fallback comes last
 
         return true;
+    }
+
+    /**
+     * Index the ShortPixel-converted format variants by source media id.
+     *
+     * @return array<string,array<int,mixed>>  [format => [sourceMediaId => variantMedia]]
+     */
+    protected function indexVariants(HasMedia $model, string $collection): array
+    {
+        $variants = [];
+
+        foreach (ImageFormats::enabled() as $format) {
+            foreach ($model->getMedia($collection.'-'.$format) as $variant) {
+                $sourceId = $variant->getCustomProperty('variant_of');
+                if ($sourceId) {
+                    $variants[$format][(int) $sourceId] = $variant;
+                }
+            }
+        }
+
+        return $variants;
     }
 
     /**

@@ -744,7 +744,7 @@
                                         <span class="text-sm text-stone-700 dark:text-stone-300">AVIF</span>
                                     </label>
                                 </div>
-                                <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">Served via <code>&lt;picture&gt;</code> with the original as fallback. <strong>AVIF</strong> requires an imagick/GD build with AVIF support.</p>
+                                <p class="mt-1 text-xs text-stone-400 dark:text-stone-500">ShortPixel converts your PNG/JPG to these formats, served via <code>&lt;picture&gt;</code> with the original as fallback. Applied asynchronously by the optimization queue.</p>
                             </div>
 
                             {{-- Keep EXIF --}}

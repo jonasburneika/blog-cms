@@ -252,13 +252,14 @@ Two mechanisms:
   > `php artisan media-library:regenerate` once to backfill them.
 
 - **WebP / AVIF (`<picture>`):** enable **WebP** and/or **AVIF** in **Settings → Image Optimization**
-  (or `media.content_image.formats`). Each stored content image is then wrapped in a `<picture>` with
-  a `<source type="image/avif">` / `<source type="image/webp">` (each a width-bucket `srcset`) and the
-  original `<img>` as the fallback, so modern browsers get the smaller format and everything else
-  still works. The modern formats are MediaLibrary conversions (`content-{w}-{format}`) derived from
-  the ShortPixel-optimized original. **AVIF requires an imagick/GD build with AVIF support** — enabling
-  a format the driver can't produce will fail those conversions. After enabling, run
-  `php artisan media-library:regenerate` to backfill existing images.
+  (or `media.content_image.formats`). **ShortPixel does the conversion** (via its `convertto`), so
+  **no local imagick/AVIF support is needed** — it requires ShortPixel enabled + a queue worker. The
+  ShortPixel job stores each converted image as a sibling variant media (`content-webp`/`content-avif`,
+  linked to the source), then re-runs the ingestor to wrap each content image in a `<picture>` with a
+  `<source type="image/avif">` / `<source type="image/webp">` (each a width-bucket `srcset`) and the
+  original `<img>` as the fallback. So modern browsers get the smaller format and everything else still
+  works. Because the conversion is asynchronous, the `<picture>` appears once the optimization job has
+  run (not in the initial save response).
 
 - **ShortPixel optimization (queued):** enable it and set the **API key in the admin UI**
   (**Settings → Image Optimization**; stored encrypted in the settings table — no `.env` needed, though

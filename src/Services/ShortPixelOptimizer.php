@@ -3,6 +3,7 @@
 namespace BlogCms\Services;
 
 use BlogCms\Models\Setting;
+use BlogCms\Support\ImageFormats;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -46,6 +47,12 @@ class ShortPixelOptimizer
         return (bool) Setting::get('shortpixel_keep_exif', config('blog-cms.media.shortpixel.keep_exif', false));
     }
 
+    /** Modern formats ShortPixel should also generate (e.g. ['avif','webp']). */
+    public function formats(): array
+    {
+        return ImageFormats::enabled();
+    }
+
     /**
      * Ask ShortPixel to optimize a public image URL. Returns the first result
      * object from the reducer (with a `Status.Code`), or null on transport error.
@@ -65,8 +72,7 @@ class ShortPixelOptimizer
                     'plugin_version' => 'bcms',   // client id (max 5 chars)
                     'lossy' => $this->compressionCode(),
                     'wait' => max(0, min(30, $wait)),
-                    'convertto' => '',   // keep the original format (in-place replace);
-                                         // WebP/AVIF are produced as MediaLibrary conversions
+                    'convertto' => $this->convertTo(),  // also generate WebP/AVIF when enabled
                     'resize' => 0,       // sizing is handled by our srcset conversions
                     'keep_exif' => $this->keepExif() ? 1 : 0,
                     'refresh' => 0,
@@ -92,11 +98,33 @@ class ShortPixelOptimizer
     /** The optimized-file URL for the configured compression, if the item succeeded. */
     public function optimizedUrl(array $item): ?string
     {
-        $url = $this->compression() === 'lossless'
-            ? ($item['LosslessURL'] ?? null)
-            : ($item['LossyURL'] ?? null);
+        $field = $this->compression() === 'lossless' ? 'LosslessURL' : 'LossyURL';
 
-        // "NA" is ShortPixel's placeholder when a variant wasn't produced.
+        return $this->urlField($item, $field);
+    }
+
+    /** The WebP/AVIF result URL for a converted format, if ShortPixel produced it. */
+    public function formatUrl(array $item, string $format): ?string
+    {
+        $prefix = strtolower($format) === 'avif' ? 'AVIF' : 'WebP';
+        $field = $prefix.($this->compression() === 'lossless' ? 'LosslessURL' : 'LossyURL');
+
+        return $this->urlField($item, $field);
+    }
+
+    /** ShortPixel `convertto` string built from the enabled formats (e.g. "+webp|+avif"). */
+    protected function convertTo(): string
+    {
+        $formats = $this->formats();
+
+        return $formats ? '+'.implode('|+', $formats) : '';
+    }
+
+    /** Read a result URL field, treating ShortPixel's "NA" placeholder as absent. */
+    protected function urlField(array $item, string $field): ?string
+    {
+        $url = $item[$field] ?? null;
+
         return is_string($url) && $url !== '' && $url !== 'NA' ? $url : null;
     }
 
