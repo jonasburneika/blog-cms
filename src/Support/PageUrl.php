@@ -59,9 +59,7 @@ class PageUrl
                 return null;
             }
 
-            $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
-
-            return static::join($prefix, $pagePrefix, $slug);
+            return static::join($prefix, static::pagePrefix($locale), $slug);
         }
 
         if (static::isPost($model)) {
@@ -159,6 +157,24 @@ class PageUrl
         $class = config('blog-cms.models.page');
 
         return $class::query()->where("slug->{$locale}", $slug)->first();
+    }
+
+    /**
+     * The page URL prefix for a locale. `pages.url_prefix` may be a single
+     * string (all locales) or a per-locale array (translated prefix, e.g.
+     * ['en' => 'page', 'lt' => 'puslapis']); missing locales fall back to the
+     * default locale's value, then the first, then ''.
+     */
+    public static function pagePrefix(?string $locale = null): string
+    {
+        $locale ??= LocaleManager::current();
+        $prefix = config('blog-cms.pages.url_prefix', 'page');
+
+        if (is_array($prefix)) {
+            $prefix = $prefix[$locale] ?? $prefix[LocaleManager::default()] ?? reset($prefix) ?: '';
+        }
+
+        return trim((string) $prefix, '/');
     }
 
     public static function modelClass(string $type): ?string

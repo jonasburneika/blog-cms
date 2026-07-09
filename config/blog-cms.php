@@ -327,7 +327,15 @@ return [
     | (e.g. '' → /{slug}, 'page' → /page/{slug}).
     */
     'pages' => [
-        'url_prefix' => '',
+        // Path segment pages live under, e.g. 'page' → /page/{slug}. Keeps pages
+        // in their own namespace so they never collide with root categories. Set
+        // to '' for root-level page URLs (/{slug}) — but then a page and a
+        // category can't share a slug.
+        //
+        // May be a single string (all locales) OR a per-locale array to translate
+        // the prefix, e.g. ['en' => 'page', 'lt' => 'puslapis', 'de' => 'seite'].
+        // Missing locales fall back to the default locale's value.
+        'url_prefix' => 'page',
     ],
 
 ];

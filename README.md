@@ -503,9 +503,11 @@ Each page has a **draft/published** status and an `is_indexable` flag.
 
 **Pages are first-class URLs**, integrated into `PageUrl` alongside posts/categories: they appear in
 the page picker (canonical / link-list / redirect targets), in the **sitemap** (published + indexable),
-and get **automatic slug-change 301s** and delete-cleanup like posts/categories. `url_prefix` shapes
-the path — default `''` → `/{slug}` (root-level, shares the 1-segment space with categories, which
-win on a slug clash), or e.g. `page` → `/page/{slug}`.
+and get **automatic slug-change 301s** and delete-cleanup like posts/categories. `pages.url_prefix`
+shapes the path — **default `page`** → `/page/{slug}` (its own namespace, no collision with root
+categories); set `''` for root-level `/{slug}` (but then a page and a category can't share a slug).
+The prefix can be **translated** by giving a per-locale array, e.g.
+`['en' => 'page', 'lt' => 'puslapis', 'de' => 'seite']` → `/page/privacy-policy`, `/lt/puslapis/…`.
 
 Headless — **the app owns the route and template**. Serve them from the same catch-all that resolves
 posts/categories (so they're reachable at their URL like any other page):

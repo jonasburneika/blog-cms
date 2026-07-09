@@ -60,7 +60,7 @@ class BlogPage extends Model
     {
         $locale = $locale ?: LocaleManager::current();
         $slug = (string) $this->getTranslation('slug', $locale, true);
-        $prefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
+        $prefix = \BlogCms\Support\PageUrl::pagePrefix($locale);
 
         return trim(($prefix !== '' ? $prefix.'/' : '').$slug, '/');
     }

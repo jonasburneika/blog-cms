@@ -71,7 +71,7 @@ class HandleRedirects
     protected function resolveEntity(string $path, string $locale): ?object
     {
         $segments = array_values(array_filter(explode('/', $path)));
-        $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
+        $pagePrefix = PageUrl::pagePrefix($locale);
 
         // Prefixed pages: {pagePrefix}/{slug}.
         if ($pagePrefix !== '' && count($segments) === 2 && $segments[0] === $pagePrefix) {

@@ -93,7 +93,6 @@ class UrlHistoryRecorder
         }
 
         $oldSlugs = $this->decodeOriginalSlug($page);
-        $pagePrefix = trim((string) config('blog-cms.pages.url_prefix', ''), '/');
 
         foreach (LocaleManager::all() as $locale) {
             $old = $oldSlugs[$locale] ?? null;
@@ -103,7 +102,7 @@ class UrlHistoryRecorder
             }
 
             $this->store(
-                $this->join(LocaleManager::prefix($locale), $pagePrefix, $old),
+                $this->join(LocaleManager::prefix($locale), PageUrl::pagePrefix($locale), $old),
                 PageUrl::TYPE_PAGE,
                 $page->getKey(),
                 $locale,
