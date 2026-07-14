@@ -633,6 +633,91 @@ Core is deliberately not 100% turnkey — a few things are the app's job by desi
 - **Categories use `title`, not `name`.** The original `name` column was replaced by a translatable `title` (plus `menu_title`). Read category labels via `$category->title`.
 - **Pin the right version.** `^1.0` currently resolves to the latest `1.x` tag — make sure that tag actually includes the features you rely on (authors, redirects, canonicals, multilingual, TOC, category hierarchy). When in doubt, check `git tag` / the release notes before upgrading.
 
+## AutoSEO Integration
+
+Pull content **from an [AutoSEO](https://autoseo) instance into this CMS**. The importer syncs
+**categories, authors, and posts** — along with each post's **FAQ / HowTo / citations / topics /
+keywords** and their **cover images + author avatars** — into the local models, **idempotently**: a
+`blog_autoseo_map` table maps each AutoSEO resource to the CMS row it created, so re-running updates
+in place and never duplicates.
+
+### Configuration
+
+Set the AutoSEO instance + token in `.env` (or override per-site in the settings table):
+
+| Env var | Settings-table key | Description |
+|---|---|---|
+| `AUTOSEO_BASE_URL` | `autoseo_base_url` | Base URL of the AutoSEO instance (e.g. `https://app.autoseo.example`) |
+| `AUTOSEO_API_TOKEN` | `autoseo_api_token` | API token — issue it in AutoSEO with a **read-only, site-scoped** preset |
+| `AUTOSEO_SITE_ID` | `autoseo_site_id` | The AutoSEO site to import from |
+| `AUTOSEO_TIMEOUT` | — | Per-request HTTP timeout in seconds |
+| `AUTOSEO_DOWNLOAD_MEDIA` | — | Set `false` to skip downloading cover images/avatars |
+| `AUTOSEO_AUTHOR_EMAIL_DOMAIN` | — | Domain used to synthesise emails for imported authors |
+| `AUTOSEO_SYNC_SCHEDULE` | — | Auto-run the sync: a preset (`daily`, `hourly`, `twiceDaily`, …) or a cron expression (`0 4 * * *`); empty = off |
+
+Settings-table overrides (`autoseo_base_url` / `autoseo_api_token` / `autoseo_site_id`) win over the
+env values, so a multi-site host can point each app at a different AutoSEO site without redeploying.
+
+> The token only needs **read** access to one site — issue it in AutoSEO from the read-only,
+> site-scoped preset. Nothing is written back to AutoSEO.
+
+### Usage
+
+Run the importer with the artisan command:
+
+```bash
+php artisan blog-cms:autoseo-sync                 # sync everything (categories, authors, posts)
+php artisan blog-cms:autoseo-sync --only=posts    # limit to one resource (repeatable)
+php artisan blog-cms:autoseo-sync --dry-run       # report what would change without writing
+php artisan blog-cms:autoseo-sync --force         # re-import even when payloads are unchanged
+php artisan blog-cms:autoseo-sync --ping          # only test connectivity/credentials, then exit
+```
+
+On success it prints a per-resource table of `created` / `updated` / `skipped` / `failed` counts.
+`--only` accepts `categories`, `authors`, `posts` (repeat the flag to combine); an unknown value
+errors out.
+
+### Scheduling
+
+The package schedules itself — set one env var and the sync runs automatically:
+
+```dotenv
+AUTOSEO_SYNC_SCHEDULE=daily        # a preset: daily, hourly, twiceDaily, weekly, …
+AUTOSEO_SYNC_SCHEDULE="0 4 * * *"  # …or any five-part cron expression
+```
+
+The scheduled run executes the `blog-cms:autoseo-sync` command (`withoutOverlapping`, in the
+background), so **no queue worker is needed** — only the standard Laravel scheduler must be running
+in the host app (the usual `* * * * * php artisan schedule:run` cron entry, or `schedule:work`).
+Leave the variable unset to disable.
+
+Prefer to control it from the host app instead? A queued job ships alongside the command:
+
+```php
+// app/Console/Kernel.php (your app)
+$schedule->job(new \BlogCms\Jobs\SyncAutoSeoContent())->daily();
+```
+
+`SyncAutoSeoContent(array $only = [], bool $force = false)` runs the same sync on the queue
+(`timeout` 1800s, a single attempt — the sync is idempotent, so a failed run just retries on the next
+tick). The job route **does** require a running queue worker.
+
+### Notes
+
+- **Idempotent** — re-running updates existing rows in place (matched via `blog_autoseo_map`); it
+  never creates duplicates.
+- **Translatable posts** — AutoSEO locale variants that share a `locale_group_id` are **merged into
+  one translatable post** (one row, per-locale content), matching the CMS's spatie/laravel-translatable model.
+- **Real save pipeline** — posts import through **Eloquent**, so the TOC, redirect/URL-history, and
+  inline-image observers all fire (imported bodies get their table of contents, slug-change 301s, and
+  content-image ingestion just like admin/API saves).
+- **Inline images** — AutoSEO's host is **auto-allowed** for content-image ingestion, so inline
+  `<img>` tags in imported bodies are pulled into MediaLibrary (SSRF guard notwithstanding).
+- **Status mapping** — AutoSEO `draft` / `review` → **draft**; `published` → **published**.
+- **Citations per post** — a post's citations import from its `schema_links`. AutoSEO's **site-level
+  citation library** has no CMS counterpart and is not imported.
+- **Change notes skipped** — AutoSEO post change-notes have no CMS counterpart and are ignored.
+
 ## Versioning
 
 Semver. Breaking changes bump major; apps upgrade on their own schedule via the `^1.0` constraint. Fix a bug once here, tag a release, `composer update` everywhere.

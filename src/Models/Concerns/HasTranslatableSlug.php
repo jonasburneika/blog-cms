@@ -41,6 +41,16 @@ trait HasTranslatableSlug
         }
     }
 
+    /**
+     * Public entry for callers that set slugs explicitly (e.g. importers):
+     * slugify $base and de-collide it against other rows for $locale. The
+     * current model is excluded, so re-applying a model's own slug is stable.
+     */
+    public function uniqueSlugFor(string $base, string $locale): string
+    {
+        return $this->uniqueSlug(Str::slug($base), $locale);
+    }
+
     protected function uniqueSlug(string $base, string $locale): string
     {
         $base = $base !== '' ? $base : 'n-a';

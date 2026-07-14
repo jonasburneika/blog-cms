@@ -320,6 +320,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AutoSEO importer
+    |--------------------------------------------------------------------------
+    | Connection + behaviour for pulling blog content (categories, authors,
+    | posts, citations, media) from the external AutoSEO REST API
+    | (Bearer token, endpoints /api/v1/sites/{site}/…).
+    |
+    | base_url / api_token / site_id can each be overridden at runtime via the
+    | settings table (keys `autoseo_base_url`, `autoseo_api_token`,
+    | `autoseo_site_id`) — the settings row wins over the env/config value here,
+    | so an app can be re-pointed without a deploy.
+    */
+    'autoseo' => [
+        'base_url' => env('AUTOSEO_BASE_URL'),
+        'api_token' => env('AUTOSEO_API_TOKEN'),
+        'site_id' => env('AUTOSEO_SITE_ID'),
+        'timeout' => (int) env('AUTOSEO_TIMEOUT', 30),
+        'download_media' => (bool) env('AUTOSEO_DOWNLOAD_MEDIA', true),
+        'author_email_domain' => env('AUTOSEO_AUTHOR_EMAIL_DOMAIN', 'autoseo.import'),
+        // Built-in scheduling: a preset (daily, hourly, twiceDaily, weekly, …)
+        // or a five-part cron expression (e.g. '0 4 * * *'). Empty disables.
+        // The host app's Laravel scheduler must be running (schedule:run cron
+        // or schedule:work); no queue worker is needed.
+        'sync_schedule' => env('AUTOSEO_SYNC_SCHEDULE'),
+        // AutoSEO post status → blog-cms status int (0 draft, 1 published, 2 archived)
+        'status_map' => ['draft' => 0, 'review' => 0, 'published' => 1],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Simple pages
     |--------------------------------------------------------------------------
     | Standalone content pages (Terms, Privacy, Cookie Policy, …). The app owns

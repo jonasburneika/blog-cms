@@ -14,6 +14,7 @@ use BlogCms\Services\UrlHistoryRecorder;
 use BlogCms\Support\LocaleManager;
 use BlogCms\Support\PageUrl;
 use BlogCms\Translation\DatabaseLoader;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Blade;
@@ -45,6 +46,54 @@ class BlogCmsServiceProvider extends ServiceProvider
         $this->shareLocales();
         $this->registerComponents();
         $this->registerPublishing();
+        $this->registerCommands();
+        $this->registerSchedule();
+    }
+
+    /** Register the package's artisan commands (console only). */
+    protected function registerCommands(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([\BlogCms\Console\AutoSeoSyncCommand::class]);
+        }
+    }
+
+    /**
+     * Schedule the AutoSEO sync when blog-cms.autoseo.sync_schedule is set —
+     * either a preset (daily, hourly, twiceDaily, …) or a five-part cron
+     * expression. Runs the command (not the queued job) so no queue worker is
+     * required; the host app only needs the standard Laravel scheduler.
+     */
+    protected function registerSchedule(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule) {
+            $expression = trim((string) config('blog-cms.autoseo.sync_schedule', ''));
+            if ($expression === '') {
+                return;
+            }
+
+            $event = $schedule->command('blog-cms:autoseo-sync')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            $presets = [
+                'everyFifteenMinutes', 'everyThirtyMinutes', 'hourly', 'everyTwoHours',
+                'everyThreeHours', 'everyFourHours', 'everySixHours', 'daily',
+                'twiceDaily', 'weekly', 'monthly',
+            ];
+
+            if (str_contains($expression, ' ')) {
+                $event->cron($expression);
+            } elseif (in_array($expression, $presets, true)) {
+                $event->{$expression}();
+            } else {
+                $event->daily();
+            }
+        });
     }
 
     /** Expose the package's anonymous Blade components as <x-blog::name>. */

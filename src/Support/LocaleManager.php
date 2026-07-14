@@ -36,6 +36,19 @@ class LocaleManager
         return static::resolve()['default'];
     }
 
+    /** Run $callback with the app locale forced to $locale, then restore it. */
+    public static function withLocale(string $locale, callable $callback): mixed
+    {
+        $previous = app()->getLocale();
+        app()->setLocale($locale);
+
+        try {
+            return $callback();
+        } finally {
+            app()->setLocale($previous);
+        }
+    }
+
     public static function isEnabled(string $locale): bool
     {
         return in_array($locale, static::all(), true);
