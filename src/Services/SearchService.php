@@ -102,7 +102,7 @@ class SearchService
     {
         return BlogPostTopic::query()
             ->select('name', DB::raw('COUNT(DISTINCT blog_post_id) as posts_count'))
-            ->whereHas('post', fn (Builder $p) => $p->readable())
+            ->whereHas('blogPost', fn (Builder $p) => $p->readable())
             ->groupBy('name')
             ->orderByDesc('posts_count');
     }
