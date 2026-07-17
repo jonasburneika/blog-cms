@@ -11,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
+        // Table name is configurable so apps whose 'settings' table is taken
+        // (e.g. spatie/laravel-settings) can point the package elsewhere.
+        Schema::create(config('blog-cms.tables.settings', 'settings'), function (Blueprint $table) {
             $table->id();
             $table->string('group')->index();
             $table->string('key')->unique();
@@ -26,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('settings');
+        Schema::dropIfExists(config('blog-cms.tables.settings', 'settings'));
     }
 };

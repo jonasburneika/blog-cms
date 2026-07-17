@@ -20,6 +20,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tables
+    |--------------------------------------------------------------------------
+    | Rename package tables whose default name may already be taken in the
+    | consuming app (e.g. spatie/laravel-settings also uses "settings").
+    | Must be set before the package migrations run.
+    */
+    'tables' => [
+        'settings' => 'settings',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | API
     |--------------------------------------------------------------------------
     | Posts created through the token-authenticated API aren't tied to a logged-in

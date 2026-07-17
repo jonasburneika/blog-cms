@@ -8,6 +8,11 @@ class Setting extends Model
 {
     protected $fillable = ['group', 'key', 'value', 'type'];
 
+    public function getTable(): string
+    {
+        return config('blog-cms.tables.settings', 'settings');
+    }
+
     public static function get(string $key, mixed $default = null): mixed
     {
         $setting = static::where('key', $key)->first();

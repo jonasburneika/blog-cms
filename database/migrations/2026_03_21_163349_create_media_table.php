@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // The consuming app may already use Spatie MediaLibrary and have this table.
+        if (Schema::hasTable('media')) {
+            return;
+        }
+
         Schema::create('media', function (Blueprint $table) {
             $table->id();
 
