@@ -1199,9 +1199,9 @@ document.addEventListener('alpine:init', () => {
             this.hookLoading = true;
             try {
                 const [hooksRes, templatesRes, typesRes] = await Promise.all([
-                    fetch(`/admin/posts/${this.postId}/hooks`, { headers: { 'Accept': 'application/json' } }),
-                    fetch('/admin/hook-templates?active_only=1', { headers: { 'Accept': 'application/json' } }),
-                    fetch('/admin/hook-templates/types', { headers: { 'Accept': 'application/json' } })
+                    fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/hooks`, { headers: { 'Accept': 'application/json' } }),
+                    fetch('{{ \BlogCms\Support\AdminPath::url() }}/hook-templates?active_only=1', { headers: { 'Accept': 'application/json' } }),
+                    fetch('{{ \BlogCms\Support\AdminPath::url() }}/hook-templates/types', { headers: { 'Accept': 'application/json' } })
                 ]);
                 this.hooks = await hooksRes.json();
                 this.hookTemplates = await templatesRes.json();
@@ -1240,8 +1240,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !this.editingHook;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/hooks`
-                    : `/admin/posts/${this.postId}/hooks/${this.editingHook.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/hooks`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/hooks/${this.editingHook.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1267,7 +1267,7 @@ document.addEventListener('alpine:init', () => {
         async deleteHook(hook) {
             if (!confirm('Delete this hook?')) return;
             try {
-                await fetch(`/admin/posts/${this.postId}/hooks/${hook.id}`, {
+                await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/hooks/${hook.id}`, {
                     method: 'DELETE',
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
                 });
@@ -1281,7 +1281,7 @@ document.addEventListener('alpine:init', () => {
 
         async previewHook(hook) {
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/hooks/${hook.id}/preview`, { headers: { 'Accept': 'application/json' } });
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/hooks/${hook.id}/preview`, { headers: { 'Accept': 'application/json' } });
                 const data = await res.json();
                 this.previewHtml = data.html;
                 this.showPreview = true;
@@ -1319,7 +1319,7 @@ document.addEventListener('alpine:init', () => {
         async loadFaqs() {
             this.faqLoading = true;
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/faqs`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/faqs`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 this.faqs = await res.json();
@@ -1339,8 +1339,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !faq.id;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/faqs`
-                    : `/admin/posts/${this.postId}/faqs/${faq.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/faqs`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/faqs/${faq.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1367,7 +1367,7 @@ document.addEventListener('alpine:init', () => {
             const faq = this.faqs[index];
             if (faq.id) {
                 try {
-                    await fetch(`/admin/posts/${this.postId}/faqs/${faq.id}`, {
+                    await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/faqs/${faq.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Accept': 'application/json',
@@ -1391,7 +1391,7 @@ document.addEventListener('alpine:init', () => {
         async loadHowToSteps() {
             this.howtoLoading = true;
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/howto-steps`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/howto-steps`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 this.howtoSteps = await res.json();
@@ -1411,8 +1411,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !step.id;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/howto-steps`
-                    : `/admin/posts/${this.postId}/howto-steps/${step.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/howto-steps`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/howto-steps/${step.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1439,7 +1439,7 @@ document.addEventListener('alpine:init', () => {
             const step = this.howtoSteps[index];
             if (step.id) {
                 try {
-                    await fetch(`/admin/posts/${this.postId}/howto-steps/${step.id}`, {
+                    await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/howto-steps/${step.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Accept': 'application/json',
@@ -1463,7 +1463,7 @@ document.addEventListener('alpine:init', () => {
         async loadCitations() {
             this.citationsLoading = true;
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/citations`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/citations`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 this.citations = await res.json();
@@ -1483,8 +1483,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !citation.id;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/citations`
-                    : `/admin/posts/${this.postId}/citations/${citation.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/citations`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/citations/${citation.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1511,7 +1511,7 @@ document.addEventListener('alpine:init', () => {
             const citation = this.citations[index];
             if (citation.id) {
                 try {
-                    await fetch(`/admin/posts/${this.postId}/citations/${citation.id}`, {
+                    await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/citations/${citation.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Accept': 'application/json',
@@ -1535,7 +1535,7 @@ document.addEventListener('alpine:init', () => {
         async loadTopics() {
             this.topicsLoading = true;
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/topics`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/topics`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 this.topics = await res.json();
@@ -1555,8 +1555,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !topic.id;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/topics`
-                    : `/admin/posts/${this.postId}/topics/${topic.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/topics`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/topics/${topic.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1583,7 +1583,7 @@ document.addEventListener('alpine:init', () => {
             const topic = this.topics[index];
             if (topic.id) {
                 try {
-                    await fetch(`/admin/posts/${this.postId}/topics/${topic.id}`, {
+                    await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/topics/${topic.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Accept': 'application/json',
@@ -1607,7 +1607,7 @@ document.addEventListener('alpine:init', () => {
         async loadBasedOn() {
             this.basedOnLoading = true;
             try {
-                const res = await fetch(`/admin/posts/${this.postId}/based-on`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/based-on`, {
                     headers: { 'Accept': 'application/json' }
                 });
                 this.basedOn = await res.json();
@@ -1627,8 +1627,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 const isNew = !source.id;
                 const url = isNew
-                    ? `/admin/posts/${this.postId}/based-on`
-                    : `/admin/posts/${this.postId}/based-on/${source.id}`;
+                    ? `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/based-on`
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/based-on/${source.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -1655,7 +1655,7 @@ document.addEventListener('alpine:init', () => {
             const source = this.basedOn[index];
             if (source.id) {
                 try {
-                    await fetch(`/admin/posts/${this.postId}/based-on/${source.id}`, {
+                    await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/posts/${this.postId}/based-on/${source.id}`, {
                         method: 'DELETE',
                         headers: {
                             'Accept': 'application/json',

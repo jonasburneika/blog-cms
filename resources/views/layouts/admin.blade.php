@@ -174,9 +174,9 @@
                     </a>
 
                     {{-- Hook Templates --}}
-                    <a href="/admin/hook-templates"
+                    <a href="{{ route('admin.hook-templates.index') }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                              {{ request()->is('admin/hook-templates*') ? 'bg-warm-400/20 text-earth-700 dark:text-warm-300 dark:bg-warm-500/15' : 'text-sand-700 dark:text-sand-300 hover:bg-sand-200 dark:hover:bg-neutral-700 hover:text-warm-800 dark:hover:text-warm-200' }}">
+                              {{ request()->routeIs('admin.hook-templates.*') ? 'bg-warm-400/20 text-earth-700 dark:text-warm-300 dark:bg-warm-500/15' : 'text-sand-700 dark:text-sand-300 hover:bg-sand-200 dark:hover:bg-neutral-700 hover:text-warm-800 dark:hover:text-warm-200' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                         </svg>

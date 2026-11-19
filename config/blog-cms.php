@@ -4,6 +4,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Back-office path
+    |--------------------------------------------------------------------------
+    | URL prefix of the admin back-office (default "admin"). Set a long random
+    | value (BLOG_CMS_ADMIN_PATH) to keep it out of reach of bots. All package
+    | routes, views and AJAX calls follow it via BlogCms\Support\AdminPath.
+    */
+    'admin' => [
+        'path' => env('BLOG_CMS_ADMIN_PATH', 'admin'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Model bindings
     |--------------------------------------------------------------------------
     | The consuming app owns authentication, so `user` points at the app's User

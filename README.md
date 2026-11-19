@@ -82,6 +82,18 @@ Everything customisable lives in `config/blog-cms.php`:
   ```
   Then append your own app-specific URLs (calculators, etc.).
 
+## Hiding the back-office path
+
+The admin lives under `/admin` by default. To keep it away from bots, set a long random
+prefix — every package route, view link and admin AJAX call follows it:
+
+```env
+BLOG_CMS_ADMIN_PATH=staff-5c3e18f88d68892ee344
+```
+
+Use `BlogCms\Support\AdminPath::prefix()` / `::url()` / `::is($request)` in host-app code
+instead of hard-coding `admin`.
+
 ## Redirects & canonicals
 
 Two SEO tools ship in the admin panel (sidebar → **Redirects**, and the *Canonical Page*

@@ -27,7 +27,7 @@
             this.testingGsc = true;
             this.gscResult = null;
             try {
-                const res = await fetch('/admin/settings/test-gsc', {
+                const res = await fetch('{{ \BlogCms\Support\AdminPath::url() }}/settings/test-gsc', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
@@ -48,7 +48,7 @@
             this.testingGa4 = true;
             this.ga4Result = null;
             try {
-                const res = await fetch('/admin/settings/test-ga4', {
+                const res = await fetch('{{ \BlogCms\Support\AdminPath::url() }}/settings/test-ga4', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,

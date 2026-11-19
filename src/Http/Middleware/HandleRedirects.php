@@ -2,6 +2,8 @@
 
 namespace BlogCms\Http\Middleware;
 
+use BlogCms\Support\AdminPath;
+
 use BlogCms\Models\BlogRedirect;
 use BlogCms\Models\BlogUrlHistory;
 use BlogCms\Support\LocaleManager;
@@ -95,6 +97,6 @@ class HandleRedirects
             return true;
         }
 
-        return $request->is('admin', 'admin/*', 'api', 'api/*', 'login', 'register', 'logout');
+        return AdminPath::is($request) || $request->is('api', 'api/*', 'login', 'register', 'logout');
     }
 }

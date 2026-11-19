@@ -21,7 +21,7 @@ use BlogCms\Http\Controllers\Admin\SettingController;
 use BlogCms\Http\Controllers\Admin\TranslationController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
+Route::prefix(\BlogCms\Support\AdminPath::prefix())->middleware(['auth'])->name('admin.')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::resource('categories', BlogCategoryController::class);
     Route::resource('posts', BlogPostController::class);

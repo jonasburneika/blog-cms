@@ -19,7 +19,7 @@ class SeoMeta
      */
     public static function robots(Request $request): string
     {
-        if ($request->is('admin/*') || $request->is('login') || $request->is('register')) {
+        if (AdminPath::is($request) || $request->is('login') || $request->is('register')) {
             return 'noindex, nofollow';
         }
 

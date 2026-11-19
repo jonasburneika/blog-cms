@@ -32,8 +32,8 @@
             this.loading = true;
             try {
                 const [templatesRes, typesRes] = await Promise.all([
-                    fetch('/admin/hook-templates', { headers: { 'Accept': 'application/json' } }),
-                    fetch('/admin/hook-templates/types', { headers: { 'Accept': 'application/json' } })
+                    fetch('{{ \BlogCms\Support\AdminPath::url() }}/hook-templates', { headers: { 'Accept': 'application/json' } }),
+                    fetch('{{ \BlogCms\Support\AdminPath::url() }}/hook-templates/types', { headers: { 'Accept': 'application/json' } })
                 ]);
                 this.templates = await templatesRes.json();
                 this.types = await typesRes.json();
@@ -76,8 +76,8 @@
             try {
                 const isNew = !this.editingTemplate;
                 const url = isNew
-                    ? '/admin/hook-templates'
-                    : `/admin/hook-templates/${this.editingTemplate.id}`;
+                    ? '{{ \BlogCms\Support\AdminPath::url() }}/hook-templates'
+                    : `{{ \BlogCms\Support\AdminPath::url() }}/hook-templates/${this.editingTemplate.id}`;
                 const res = await fetch(url, {
                     method: isNew ? 'POST' : 'PUT',
                     headers: {
@@ -102,7 +102,7 @@
 
         async duplicateTemplate(template) {
             try {
-                const res = await fetch(`/admin/hook-templates/${template.id}/duplicate`, {
+                const res = await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/hook-templates/${template.id}/duplicate`, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -122,7 +122,7 @@
         async deleteTemplate(template) {
             if (!confirm('Delete this template? Hooks using it will keep their current content but lose the template link.')) return;
             try {
-                await fetch(`/admin/hook-templates/${template.id}`, {
+                await fetch(`{{ \BlogCms\Support\AdminPath::url() }}/hook-templates/${template.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Accept': 'application/json',
