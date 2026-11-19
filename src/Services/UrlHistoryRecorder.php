@@ -41,7 +41,7 @@ class UrlHistoryRecorder
             }
 
             $this->store(
-                $this->join(LocaleManager::prefix($locale), $categorySlug, $old),
+                $this->join(LocaleManager::prefix($locale), PageUrl::blogPrefix($locale), $categorySlug, $old),
                 PageUrl::TYPE_POST,
                 $post->getKey(),
                 $locale,
@@ -69,7 +69,7 @@ class UrlHistoryRecorder
                 continue;
             }
 
-            $prefix = LocaleManager::prefix($locale);
+            $prefix = $this->join(LocaleManager::prefix($locale), PageUrl::blogPrefix($locale));
 
             $this->store($this->join($prefix, $old), PageUrl::TYPE_CATEGORY, $category->getKey(), $locale);
 

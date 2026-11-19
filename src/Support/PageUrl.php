@@ -50,7 +50,7 @@ class PageUrl
         if (static::isCategory($model)) {
             $slug = static::slug($model, $locale);
 
-            return $slug === null ? null : static::join($prefix, $slug);
+            return $slug === null ? null : static::join($prefix, static::blogPrefix($locale), $slug);
         }
 
         if (static::isPage($model)) {
@@ -74,7 +74,7 @@ class PageUrl
                 return null;
             }
 
-            return static::join($prefix, $categorySlug, $postSlug);
+            return static::join($prefix, static::blogPrefix($locale), $categorySlug, $postSlug);
         }
 
         return null;
@@ -169,6 +169,23 @@ class PageUrl
     {
         $locale ??= LocaleManager::current();
         $prefix = config('blog-cms.pages.url_prefix', 'page');
+
+        if (is_array($prefix)) {
+            $prefix = $prefix[$locale] ?? $prefix[LocaleManager::default()] ?? reset($prefix) ?: '';
+        }
+
+        return trim((string) $prefix, '/');
+    }
+
+    /**
+     * The blog (posts + categories) URL prefix for a locale, '' when unset.
+     * `blog.url_prefix` may be a string or a per-locale array (same fallback
+     * rules as pagePrefix()).
+     */
+    public static function blogPrefix(?string $locale = null): string
+    {
+        $locale ??= LocaleManager::current();
+        $prefix = config('blog-cms.blog.url_prefix', '');
 
         if (is_array($prefix)) {
             $prefix = $prefix[$locale] ?? $prefix[LocaleManager::default()] ?? reset($prefix) ?: '';

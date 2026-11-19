@@ -82,6 +82,25 @@ class HandleRedirects
             }
         }
 
+        // Prefixed blog: posts/categories only under {blogPrefix}/…; everything
+        // else at the root can only be a root-level page.
+        $blogPrefix = PageUrl::blogPrefix($locale);
+        if ($blogPrefix !== '') {
+            if (($segments[0] ?? null) !== $blogPrefix) {
+                return $pagePrefix === '' && count($segments) === 1
+                    ? PageUrl::pageBySlug($segments[0], $locale)
+                    : null;
+            }
+
+            $segments = array_slice($segments, 1);
+
+            return match (count($segments)) {
+                1 => PageUrl::categoryBySlug($segments[0], $locale),
+                2 => PageUrl::postBySlug($segments[0], $segments[1], $locale),
+                default => null,
+            };
+        }
+
         return match (count($segments)) {
             // Root-level pages share the 1-segment space with categories → category wins.
             1 => PageUrl::categoryBySlug($segments[0], $locale)

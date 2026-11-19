@@ -373,6 +373,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Blog URL prefix
+    |--------------------------------------------------------------------------
+    | Path segment that posts and categories live under: '' (default) →
+    | /{category}/{post}; 'blog' → /blog/{category}/{post}. Use it when the host
+    | app owns other two-segment URLs (e.g. /{product-line}/{product}). May be a
+    | per-locale array, like pages.url_prefix. The app's routes must match.
+    */
+    'blog' => [
+        'url_prefix' => env('BLOG_CMS_URL_PREFIX', ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Simple pages
     |--------------------------------------------------------------------------
     | Standalone content pages (Terms, Privacy, Cookie Policy, …). The app owns

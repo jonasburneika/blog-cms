@@ -94,6 +94,17 @@ BLOG_CMS_ADMIN_PATH=staff-5c3e18f88d68892ee344
 Use `BlogCms\Support\AdminPath::prefix()` / `::url()` / `::is($request)` in host-app code
 instead of hard-coding `admin`.
 
+## Blog URL prefix
+
+Posts and categories default to `/{category}/{post}` and `/{category}`. If the app owns other two-segment URLs (e.g. `/{product-line}/{product}`), move the blog under a prefix:
+
+```php
+// config/blog-cms.php
+'blog' => ['url_prefix' => 'blog'],   // or per locale: ['en' => 'blog', 'lt' => 'tinklarastis']
+```
+
+`PageUrl` (canonicals, hreflang, sitemap, API `url`), slug-change history and `HandleRedirects` all follow it; `PageUrl::blogPrefix($locale)` returns the segment. The app's own routes must use the same prefix.
+
 ## Redirects & canonicals
 
 Two SEO tools ship in the admin panel (sidebar → **Redirects**, and the *Canonical Page*
